@@ -1,0 +1,41 @@
+# Cấu hình các đường dẫn tương đối dẫn đến thư mục Data, Metric, và Src
+
+[paths.data]
+origin_dir = "Data/Origin"
+eda_dir = "Data/EDA"
+eda_result_dir = "Data/EDA/result"
+preprocess_dir = "Data/Preprocess Data"
+
+[paths.files]
+train_csv = "Data/Origin/train.csv"
+features_csv = "Data/Origin/features.csv"
+stores_csv = "Data/Origin/stores.csv"
+test_csv = "Data/Origin/test.csv"
+sample_submission_csv = "Data/Origin/sampleSubmission.csv"
+
+processed_train_parquet = "Data/Preprocess Data/processed_train.parquet"
+processed_test_parquet = "Data/Preprocess Data/processed_test.parquet"
+processed_train_csv = "Data/Preprocess Data/processed_train.csv"
+processed_test_csv = "Data/Preprocess Data/processed_test.csv"
+
+[paths.metric]
+dir = "Metric"
+
+[paths.models.baseline]
+dir = "Src/Baseline"
+result_dir = "Src/Baseline/Result"
+
+[paths.models.lightgbm]
+dir = "Src/LightGBM"
+checkpoint_dir = "Src/LightGBM/checkpoint"
+result_dir = "Src/LightGBM/Result"
+
+[paths.models.xgboost]
+dir = "Src/XGBoost"
+checkpoint_dir = "Src/XGBoost/checkpoint"
+result_dir = "Src/XGBoost/Result"
+
+[paths.models.catboost]
+dir = "Src/CatBoost"
+checkpoint_dir = "Src/CatBoost/checkpoint"
+result_dir = "Src/CatBoost/Result"
