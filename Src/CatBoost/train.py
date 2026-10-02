@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import catboost as cb
 
-# Đảm bảo UTF-8 stream trên Windows console
+# Ensure UTF-8 output stream on Windows console
 if sys.platform.startswith('win'):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -16,63 +16,79 @@ if sys.platform.startswith('win'):
 
 warnings.filterwarnings('ignore')
 
-# Thêm BASE_DIR vào sys.path
+# Add BASE_DIR to sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
 BASE_DIR = CURRENT_DIR.parent.parent
 sys.path.append(str(BASE_DIR))
 
 from Config import load_config, get_path
-from Metric.metrics import evaluate_all, format_metric_report
+from Metric.metrics import evaluate_all
+
+
+def format_terminal_report(title: str, metrics: dict) -> str:
+    """Format metric evaluation into clean English report for terminal output."""
+    report = [
+        f"--------------------------------------------------",
+        f" Evaluation report: {title}",
+        f"--------------------------------------------------",
+        f" 1. WMAE (Holiday weight x5) : {metrics['WMAE']:,.2f} USD",
+        f" 2. MAE (Mean absolute error): {metrics['MAE']:,.2f} USD",
+        f" 3. RMSE (Root mean squared) : {metrics['RMSE']:,.2f} USD",
+        f" 4. MAPE (Mean abs pct err)  : {metrics['MAPE (%)']:.2f} %",
+        f" 5. R2 Score (Determination) : {metrics['R2']:.4f}",
+        f"--------------------------------------------------"
+    ]
+    return "\n".join(report)
 
 
 def load_data() -> pd.DataFrame:
     """
-    Tải dữ liệu đã tiền xử lý từ config (ưu tiên định dạng Parquet, fallback sang CSV).
-    Đồng thời làm sạch các giá trị vô cực (inf, -inf) và NaN để tương thích với GPU Pool.
+    Load preprocessed data from config (Parquet preferred, CSV fallback).
+    Clean infinite values (inf, -inf) and NaNs for GPU Pool compatibility.
     """
     config = load_config()
     parquet_path = get_path(config["paths"]["files"]["processed_train_parquet"])
     csv_path = get_path(config["paths"]["files"]["processed_train_csv"])
 
     if parquet_path.exists():
-        print(f"[1/4] Đang nạp dữ liệu từ Parquet: {parquet_path.name}...")
+        print(f"[1/4] Loading preprocessed data from Parquet: {parquet_path.name}...")
         df = pd.read_parquet(parquet_path)
     elif csv_path.exists():
-        print(f"[1/4] Đang nạp dữ liệu từ CSV: {csv_path.name}...")
+        print(f"[1/4] Loading preprocessed data from CSV: {csv_path.name}...")
         df = pd.read_csv(csv_path)
     else:
-        raise FileNotFoundError(f"Không tìm thấy file dữ liệu tiền xử lý tại {parquet_path} hoặc {csv_path}")
+        raise FileNotFoundError(f"Preprocessed data file not found at {parquet_path} or {csv_path}")
 
     df['Date'] = pd.to_datetime(df['Date'])
 
-    # Làm sạch các giá trị vô cực (inf, -inf) và NaN nếu phát sinh trong phép chia tỷ lệ
+    # Clean infinite values and NaNs from ratio features
     df = df.replace([np.inf, -np.inf], np.nan)
     num_cols = df.select_dtypes(include=np.number).columns
     df[num_cols] = df[num_cols].fillna(0.0)
 
-    print(f"      Đã nạp {df.shape[0]:,} dòng và {df.shape[1]} cột.")
+    print(f"      Loaded {df.shape[0]:,} rows and {df.shape[1]} columns.")
     return df
 
 
 def split_time_series(df: pd.DataFrame):
     """
-    Phân chia dữ liệu theo chuỗi thời gian để chống rò rỉ dữ liệu (Lookahead Bias):
-      - Train set: Dữ liệu trước 2011-10-01 (dùng để học quy luật lịch sử)
-      - Validation set: Từ 2011-10-01 đến 2011-12-31 (mùa mua sắm lớn Thanksgiving, Black Friday, Christmas)
-      - Out-of-sample Test set: Từ 2012-01-01 trở đi (đánh giá kiểm thử tương lai)
+    Split time series data to prevent lookahead bias:
+      - Train set: Before 2011-10-01 (learn historical patterns)
+      - Validation set: From 2011-10-01 to 2011-12-31 (holiday shopping season)
+      - Out-of-sample Test set: From 2012-01-01 onwards (future evaluation)
     """
-    print("[2/4] Phân chia dữ liệu theo mốc thời gian (Time-based Split)...")
+    print("[2/4] Splitting time series data (time-based split)...")
 
-    # Xác định danh sách cột đặc trưng (Feature Columns)
+    # Define feature columns
     exclude_cols = ['Date', 'Weekly_Sales']
     feature_cols = [c for c in df.columns if c not in exclude_cols]
     cat_cols = [c for c in ['Store', 'Dept', 'Type'] if c in feature_cols]
 
-    # Đảm bảo kiểu số nguyên cho các đặc trưng phân loại của CatBoost
+    # Ensure integer type for CatBoost categorical features
     for c in cat_cols:
         df[c] = df[c].astype(int)
 
-    # Phân chia thời gian
+    # Time-based splitting
     train_mask = df['Date'] < '2011-10-01'
     val_mask = (df['Date'] >= '2011-10-01') & (df['Date'] <= '2011-12-31')
     test_mask = df['Date'] >= '2012-01-01'
@@ -85,15 +101,15 @@ def split_time_series(df: pd.DataFrame):
     X_val, y_val = val_df[feature_cols], val_df['Weekly_Sales']
     X_test, y_test = test_df[feature_cols], test_df['Weekly_Sales']
 
-    # Trọng số WMAE: x5 cho tuần có ngày lễ (IsHoliday == 1), x1 cho tuần thường
+    # Sample weights: x5 for holiday weeks, x1 for regular weeks
     w_train = np.where(train_df['IsHoliday'] == 1, 5.0, 1.0)
     w_val = np.where(val_df['IsHoliday'] == 1, 5.0, 1.0)
     w_test = np.where(test_df['IsHoliday'] == 1, 5.0, 1.0)
 
-    print(f"      + Tập Huấn luyện (Train):      {len(train_df):,} dòng (trước 2011-10-01)")
-    print(f"      + Tập Kiểm định (Validation):  {len(val_df):,} dòng (2011-10-01 đến 2011-12-31)")
-    print(f"      + Tập Kiểm thử (Holdout Test): {len(test_df):,} dòng (từ 2012-01-01 trở đi)")
-    print(f"      + Số lượng đặc trưng:          {len(feature_cols)} features ({cat_cols} là cat_features)")
+    print(f"      + Train set:      {len(train_df):,} rows (before 2011-10-01)")
+    print(f"      + Validation set: {len(val_df):,} rows (2011-10-01 to 2011-12-31)")
+    print(f"      + Holdout test:   {len(test_df):,} rows (from 2012-01-01 onwards)")
+    print(f"      + Feature count:  {len(feature_cols)} features ({cat_cols} categorical)")
 
     return {
         "X_train": X_train, "y_train": y_train, "w_train": w_train, "val_df": val_df,
@@ -105,18 +121,18 @@ def split_time_series(df: pd.DataFrame):
 
 def train_catboost():
     """
-    Cấu hình siêu tham số, thiết lập cat_features, sample_weight cho WMAE,
-    huấn luyện CatBoost với tăng tốc GPU (CUDA) và lưu checkpoint.
+    Configure hyperparameters, set cat_features and sample weights for WMAE,
+    train CatBoost with GPU acceleration (CUDA) and save checkpoint.
     """
     print("=" * 80)
-    print(" BẮT ĐẦU HUẤN LUYỆN MÔ HÌNH CATBOOST (TIME SERIES FORECASTING VỚI GPU)")
+    print(" Starting CatBoost model training (Time series forecasting with GPU)")
     print("=" * 80)
 
     config = load_config()
     checkpoint_dir = get_path(config["paths"]["models"]["catboost"]["checkpoint_dir"])
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Nạp và phân chia dữ liệu
+    # 1. Load and split data
     df = load_data()
     data = split_time_series(df)
 
@@ -125,14 +141,13 @@ def train_catboost():
     cat_cols = data["cat_cols"]
     feature_cols = data["feature_cols"]
 
-    # 2. Xây dựng đối tượng Pool tối ưu của CatBoost
-    print("\n[3/4] Chuẩn bị CatBoost Pool và cấu hình thiết bị...")
+    # 2. Build CatBoost Pool objects
+    print("\n[3/4] Preparing CatBoost pool and configuring device...")
     train_pool = cb.Pool(X_train, y_train, weight=w_train, cat_features=cat_cols)
     val_pool = cb.Pool(X_val, y_val, weight=w_val, cat_features=cat_cols)
 
-    # 3. Cấu hình siêu tham số
-    # Trên GPU của CatBoost, loss_function="RMSE" kết hợp sample_weight (x5 holiday) và eval_metric="MAE"
-    # là cấu hình chuẩn xác nhất để hội tụ nhanh và tối ưu WMAE (do MAE loss trên GPU của CatBoost chưa hoàn thiện)
+    # 3. Configure hyperparameters
+    # On CatBoost GPU, loss_function="RMSE" with sample weights and eval_metric="MAE" converges cleanly
     base_params = {
         "iterations": 1500,
         "learning_rate": 0.08,
@@ -146,27 +161,27 @@ def train_catboost():
 
     used_device = "GPU"
     try:
-        print("      Đang khởi tạo CatBoost với GPU (CUDA acceleration)...")
+        print("      Initializing CatBoost with GPU (CUDA acceleration)...")
         gpu_params = base_params.copy()
         gpu_params["task_type"] = "GPU"
         model = cb.CatBoostRegressor(**gpu_params)
 
-        # Kiểm tra nhanh GPU với slice nhỏ
+        # Quick test on small slice
         test_pool = cb.Pool(X_train.iloc[:50], y_train.iloc[:50], weight=w_train[:50], cat_features=cat_cols)
         _ = model.fit(test_pool, eval_set=test_pool, verbose=False)
-        print("      [THÀNH CÔNG] Đã kích hoạt tăng tốc phần cứng GPU cho CatBoost!")
+        print("      [SUCCESS] Enabled hardware GPU acceleration for CatBoost!")
         model = cb.CatBoostRegressor(**gpu_params)
     except Exception as e:
-        print(f"      [LƯU Ý] Không thể chạy GPU trên CatBoost ({e}).")
-        print("      [CHUYỂN ĐỔI] Chuyển đổi sang chế độ đa luồng CPU (thread_count=-1)...")
+        print(f"      [NOTE] Could not initialize CatBoost on GPU ({e}).")
+        print("      [SWITCH] Falling back to multi-threaded CPU mode (thread_count=-1)...")
         cpu_params = base_params.copy()
         cpu_params["task_type"] = "CPU"
         cpu_params["thread_count"] = -1
         model = cb.CatBoostRegressor(**cpu_params)
         used_device = "CPU"
 
-    # 4. Huấn luyện mô hình với Early Stopping
-    print(f"\n[4/4] Bắt đầu huấn luyện CatBoost trên {used_device} (Early Stopping 50 rounds)...")
+    # 4. Train model with early stopping
+    print(f"\n[4/4] Starting CatBoost training on {used_device} (Early stopping 50 rounds)...")
     model.fit(
         train_pool,
         eval_set=val_pool,
@@ -174,14 +189,14 @@ def train_catboost():
     )
 
     best_iter = model.get_best_iteration()
-    print(f"\n[HOÀN THÀNH] Huấn luyện dừng tại iteration tối ưu: {best_iter}")
+    print(f"\n[COMPLETED] Training stopped at optimal iteration: {best_iter}")
 
-    # Đánh giá nhanh trên tập Validation
+    # Preliminary evaluation on Validation set
     val_preds = model.predict(val_pool)
     val_metrics = evaluate_all(y_val, val_preds, data["val_df"]['IsHoliday'])
-    print("\n" + format_metric_report("CatBoost (Validation Set - Sơ bộ)", val_metrics))
+    print("\n" + format_terminal_report("CatBoost (Validation set - Preliminary)", val_metrics))
 
-    # Lưu checkpoint mô hình
+    # Save model checkpoint
     checkpoint_file = checkpoint_dir / "catboost_model.pkl"
     checkpoint_data = {
         "model": model,
@@ -192,15 +207,15 @@ def train_catboost():
         "params": model.get_params()
     }
     joblib.dump(checkpoint_data, checkpoint_file)
-    print(f"[LƯU CHECKPOINT] Đã lưu model và metadata thành công tại: {checkpoint_file}")
+    print(f"[CHECKPOINT] Model and metadata saved to: {checkpoint_file}")
 
-    # Lưu model nhị phân chuẩn của CatBoost (.cbm)
+    # Save native CatBoost binary model (.cbm)
     try:
         cbm_file = checkpoint_dir / "catboost_model.cbm"
         model.save_model(str(cbm_file))
-        print(f"[LƯU CBM MODEL] Đã lưu mô hình CatBoost binary tại: {cbm_file}")
+        print(f"[CBM MODEL] Saved CatBoost binary model to: {cbm_file}")
     except Exception as e:
-        print(f"[CẢNH BÁO] Không thể lưu file .cbm: {e}")
+        print(f"[WARNING] Could not save .cbm file: {e}")
 
     return model, val_metrics
 

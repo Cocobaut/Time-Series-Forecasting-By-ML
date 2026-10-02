@@ -1,37 +1,37 @@
 ================================================================================
- BÁO CÁO TOÀN DIỆN HIỆU NĂNG MÔ HÌNH CATBOOST (WALMART STORE SALES FORECASTING)
+ Báo cáo toàn diện hiệu năng mô hình CatBoost (Walmart Store Sales Forecasting)
 ================================================================================
 
 - Cấu hình thiết bị huấn luyện : GPU
-- Điểm dừng tối ưu (Best Iter) : 463
+- Điểm dừng tối ưu (Best iteration) : 463
 - Tổng số đặc trưng đầu vào   : 44
-- Đặc trưng phân loại (Cats)   : ['Store', 'Dept', 'Type']
+- Đặc trưng phân loại (Categorical) : ['Store', 'Dept', 'Type']
 
-==================================================
- BÁO CÁO ĐÁNH GIÁ MÔ HÌNH: CATBOOST - TẬP KIỂM ĐỊNH (VALIDATION: 10/2011 - 12/2011)
-==================================================
+--------------------------------------------------
+ Báo cáo đánh giá mô hình: CatBoost - Tập kiểm định (Validation: 10/2011 - 12/2011)
+--------------------------------------------------
  1. WMAE (Trọng số ngày lễ x5) : 2,686.38 USD
- 2. MAE (Sai số tuyệt đối TB)  : 2,146.51 USD
- 3. RMSE (Căn bậc hai MSE)    : 5,138.81 USD
- 4. MAPE (Sai số phần trăm TB) : 447.85 %
+ 2. MAE (Sai số tuyệt đối trung bình) : 2,146.51 USD
+ 3. RMSE (Căn bậc hai sai số toàn phương) : 5,138.81 USD
+ 4. MAPE (Sai số phần trăm trung bình) : 447.85 %
  5. R2 Score (Hệ số xác định) : 0.9614
-==================================================
+--------------------------------------------------
 
-==================================================
- BÁO CÁO ĐÁNH GIÁ MÔ HÌNH: CATBOOST - TẬP KIỂM THỬ NGOÀI MẪU (TEST: NĂM 2012)
-==================================================
+--------------------------------------------------
+ Báo cáo đánh giá mô hình: CatBoost - Tập kiểm thử ngoài mẫu (Test: Năm 2012)
+--------------------------------------------------
  1. WMAE (Trọng số ngày lễ x5) : 1,440.43 USD
- 2. MAE (Sai số tuyệt đối TB)  : 1,420.81 USD
- 3. RMSE (Căn bậc hai MSE)    : 2,992.21 USD
- 4. MAPE (Sai số phần trăm TB) : 1228.04 %
+ 2. MAE (Sai số tuyệt đối trung bình) : 1,420.81 USD
+ 3. RMSE (Căn bậc hai sai số toàn phương) : 2,992.21 USD
+ 4. MAPE (Sai số phần trăm trung bình) : 1228.04 %
  5. R2 Score (Hệ số xác định) : 0.9817
-==================================================
+--------------------------------------------------
 
 ================================================================================
- BẢNG TỔNG HỢP SO SÁNH GIỮA CÁC TẬP KIỂM ĐỊNH
+ Bảng tổng hợp so sánh giữa các tập kiểm định
 ================================================================================
-Tập Đánh Giá                        | WMAE (USD)      | MAE (USD)    | RMSE (USD)   | R2      
+Tập đánh giá                        | WMAE (USD)      | MAE (USD)    | RMSE (USD)   | R2      
 ----------------------------------------------------------------------------------------
-Validation Set (Q4/2011 Holiday)    | 2,686.38        | 2,146.51     | 5,138.81     | 0.9614  
-Holdout Test Set (2012 Out-of-sample) | 1,440.43        | 1,420.81     | 2,992.21     | 0.9817  
+Tập kiểm định (Q4/2011 Holiday)     | 2,686.38        | 2,146.51     | 5,138.81     | 0.9614  
+Tập kiểm thử (2012 Out-of-sample)   | 1,440.43        | 1,420.81     | 2,992.21     | 0.9817  
 ================================================================================
