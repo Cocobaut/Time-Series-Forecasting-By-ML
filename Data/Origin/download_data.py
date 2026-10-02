@@ -45,6 +45,9 @@ def setup_kaggle_credentials():
 
 def download_data():
     origin_dir = Path(__file__).resolve().parent
+    data_dir = origin_dir / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
     setup_kaggle_credentials()
 
     print("\n=== BAT DAU TAI DU LIEU CUOC THI WALMART ===")
@@ -54,20 +57,20 @@ def download_data():
         path = kagglehub.competition_download('walmart-recruiting-store-sales-forecasting')
         print(f"\n[OK] Duong dan cache du lieu: {path}")
 
-        # Sao chep va giai nen vao Data/Origin
-        print("[...] Dang dong bo va giai nen du lieu vao Data/Origin...")
+        # Sao chep va giai nen vao Data/Origin/data
+        print("[...] Dang dong bo va giai nen du lieu vao Data/Origin/data...")
         for file in Path(path).iterdir():
-            dest_file = origin_dir / file.name
+            dest_file = data_dir / file.name
             if file.is_file():
                 shutil.copy2(file, dest_file)
                 if dest_file.suffix == '.zip':
                     print(f"     -> Dang giai nen: {dest_file.name} ...")
                     with zipfile.ZipFile(dest_file, 'r') as zip_ref:
-                        zip_ref.extractall(origin_dir)
+                        zip_ref.extractall(data_dir)
 
-        print(f"\n[THANH CONG] Toan bo du lieu da san sang tai: {origin_dir}")
+        print(f"\n[THANH CONG] Toan bo du lieu da san sang tai: {data_dir}")
         print("\nDanh sach cac file hien co:")
-        for f in sorted(origin_dir.iterdir()):
+        for f in sorted(data_dir.iterdir()):
             if f.is_file() and f.suffix in ['.csv', '.zip']:
                 print(f" - {f.name:25} ({f.stat().st_size / (1024*1024):6.2f} MB)")
 

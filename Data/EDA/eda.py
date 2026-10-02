@@ -11,7 +11,7 @@ from Config import load_config, get_path
 
 def load_raw_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Tải dữ liệu thô từ thư mục Data/Origin (train.csv, features.csv, stores.csv).
+    Tải dữ liệu thô từ thư mục Data/Origin/data (train.csv, features.csv, stores.csv).
     """
     # TODO: Đọc các file train.csv, features.csv, stores.csv từ config
     pass

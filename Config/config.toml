@@ -1,22 +1,22 @@
 # Cấu hình các đường dẫn tương đối dẫn đến thư mục Data, Metric, và Src
 
 [paths.data]
-origin_dir = "Data/Origin"
+origin_dir = "Data/Origin/data"
 eda_dir = "Data/EDA"
 eda_result_dir = "Data/EDA/result"
-preprocess_dir = "Data/Preprocess Data"
+preprocess_dir = "Data/Preprocess Data/data"
 
 [paths.files]
-train_csv = "Data/Origin/train.csv"
-features_csv = "Data/Origin/features.csv"
-stores_csv = "Data/Origin/stores.csv"
-test_csv = "Data/Origin/test.csv"
-sample_submission_csv = "Data/Origin/sampleSubmission.csv"
+train_csv = "Data/Origin/data/train.csv"
+features_csv = "Data/Origin/data/features.csv"
+stores_csv = "Data/Origin/data/stores.csv"
+test_csv = "Data/Origin/data/test.csv"
+sample_submission_csv = "Data/Origin/data/sampleSubmission.csv"
 
-processed_train_parquet = "Data/Preprocess Data/processed_train.parquet"
-processed_test_parquet = "Data/Preprocess Data/processed_test.parquet"
-processed_train_csv = "Data/Preprocess Data/processed_train.csv"
-processed_test_csv = "Data/Preprocess Data/processed_test.csv"
+processed_train_parquet = "Data/Preprocess Data/data/processed_train.parquet"
+processed_test_parquet = "Data/Preprocess Data/data/processed_test.parquet"
+processed_train_csv = "Data/Preprocess Data/data/processed_train.csv"
+processed_test_csv = "Data/Preprocess Data/data/processed_test.csv"
 
 [paths.metric]
 dir = "Metric"

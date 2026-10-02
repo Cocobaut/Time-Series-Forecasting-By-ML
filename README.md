@@ -68,8 +68,13 @@ Toàn bộ dự án được tổ chức theo cấu trúc module hóa chuẩn m�
 │   └── config.toml               # Định nghĩa đường dẫn tương đối trỏ đến Data, Src, Checkpoint
 │
 ├── Data/
-│   ├── Origin/                   # Chứa dữ liệu thô gốc từ Kaggle
-│   │   └── download_data.py      # Code tự động tải và giải nén dữ liệu Walmart Competition
+│   ├── Origin/                   # Chứa code tải dữ liệu và thư mục con data
+│   │   ├── download_data.py      # Code tự động tải và giải nén dữ liệu Walmart Competition
+│   │   └── data/                 # Thư mục con CHỈ CHỨA dữ liệu thô gốc (.csv, .zip)
+│   │       ├── train.csv
+│   │       ├── features.csv
+│   │       ├── stores.csv
+│   │       └── test.csv
 │   │
 │   ├── EDA/                      # Khám phá và trực quan hóa dữ liệu
 │   │   ├── eda.py                # Code phân tích Trend, Seasonality, Holidays, Exogenous
@@ -77,7 +82,8 @@ Toàn bộ dự án được tổ chức theo cấu trúc module hóa chuẩn m�
 │   │
 │   └── Preprocess Data/          # Tiền xử lý và kỹ thuật đặc trưng
 │       ├── preprocess.py         # Code tạo Calendar, Lag 1-52, Rolling Mean/Std, encode
-│       └── processed_train.parquet # Dữ liệu dạng bảng sẵn sàng huấn luyện
+│       └── data/                 # Thư mục con CHỈ CHỨA dữ liệu đã qua tiền xử lý
+│           └── processed_train.parquet
 │
 ├── Metric/
 │   ├── README.md                 # Tài liệu miêu tả chi tiết WMAE, MAE, RMSE, MAPE, R2
@@ -207,7 +213,7 @@ uv pip install -r requirements.txt
 ```bash
 python "Data/Origin/download_data.py"
 ```
-*(Code tự động nhận diện token từ `kaggle.json`, tải và giải nén toàn bộ các tệp `train.csv`, `features.csv`, `stores.csv`, `test.csv` vào thư mục `Data/Origin`)*.
+*(Code tự động nhận diện token từ `kaggle.json`, tải và giải nén toàn bộ các tệp `train.csv`, `features.csv`, `stores.csv`, `test.csv` vào thư mục `Data/Origin/data`)*.
 
 ### Bước 3: Khám phá và phân tích dữ liệu (EDA)
 ```bash
@@ -219,7 +225,7 @@ python "Data/EDA/eda.py"
 ```bash
 python "Data/Preprocess Data/preprocess.py"
 ```
-*(Dữ liệu sau xử lý sẽ được lưu vào `Data/Preprocess Data/processed_train.parquet`)*.
+*(Dữ liệu sau xử lý sẽ được lưu vào `Data/Preprocess Data/data/processed_train.parquet`)*.
 
 ### Bước 5: Chạy các mô hình Baseline
 ```bash

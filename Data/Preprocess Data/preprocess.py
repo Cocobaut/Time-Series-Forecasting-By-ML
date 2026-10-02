@@ -18,13 +18,13 @@ def load_data() -> pd.DataFrame:
 
 def preprocess_pipeline():
     """
-    Điều phối toàn bộ quy trình tiền xử lý và lưu kết quả ra file parquet/csv.
+    Điều phối toàn bộ quy trình tiền xử lý và lưu kết quả ra file parquet/csv trong Data/Preprocess Data/data/.
     """
     config = load_config()
     output_dir = get_path(config["paths"]["data"]["preprocess_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: Thực thi toàn bộ pipeline và lưu vào processed_train.parquet
+    # TODO: Thực thi toàn bộ pipeline và lưu vào Data/Preprocess Data/data/processed_train.parquet
     pass
 
 if __name__ == "__main__":
