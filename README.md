@@ -142,8 +142,7 @@ flowchart TD
 
 1. **Calendar / Temporal Features:**
    * `Year`, `Month`, `Week`, `Quarter`.
-   * Đặc trưng tuần hoàn theo hình sin/cos:
-     $$\text{Week\_sin} = \sin\left(\frac{2\pi \cdot \text{Week}}{52}\right), \quad \text{Week\_cos} = \cos\left(\frac{2\pi \cdot \text{Week}}{52}\right)$$
+   * Đặc trưng tuần hoàn theo hình sin/cos: Week_sin = sin(2π . Week / 52) và Week_cos = cos(2π . Week / 52)
 2. **Lag Features (Độ trễ):**
    * Được nhóm theo từng cặp `(Store, Dept)`:
    * Ngắn hạn: `sales_lag_1`, `sales_lag_2`, `sales_lag_4`, `sales_lag_8`.
