@@ -26,8 +26,9 @@ def split_time_series(df: pd.DataFrame):
     Chia dữ liệu thành train, validation Q4/2011 và holdout từ năm 2012.
     """
     config = load_config()
-    validation_start = pd.Timestamp(config["data"]["validation_start"])
-    test_start = pd.Timestamp(config["data"]["test_start"])
+    data_config = config.get("data", {})
+    validation_start = pd.Timestamp(data_config.get("validation_start", "2011-10-01"))
+    test_start = pd.Timestamp(data_config.get("test_start", "2012-01-01"))
 
     if validation_start >= test_start:
         raise ValueError("validation_start phải nằm trước test_start.")
