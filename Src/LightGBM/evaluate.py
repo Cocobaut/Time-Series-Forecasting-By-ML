@@ -3,6 +3,14 @@ from pathlib import Path
 import joblib
 import numpy as np
 
+# Đảm bảo luồng xuất UTF-8 trên Windows console
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 # Thêm BASE_DIR vào sys.path
 CURRENT_DIR = Path(__file__).resolve().parent
 BASE_DIR = CURRENT_DIR.parent.parent
@@ -11,6 +19,23 @@ sys.path.append(str(BASE_DIR))
 from train import load_data, split_time_series
 from Config import load_config, get_path
 from Metric.metrics import evaluate_all, format_metric_report
+
+
+def format_txt_report(title: str, metrics: dict) -> str:
+    """Định dạng báo cáo đánh giá thành tiếng Việt chữ thường (chỉ in hoa chữ cái đầu) cho file txt."""
+    report = [
+        f"--------------------------------------------------",
+        f" Báo cáo đánh giá mô hình: {title}",
+        f"--------------------------------------------------",
+        f" 1. WMAE (Trọng số ngày lễ x5) : {metrics['WMAE']:,.2f} USD",
+        f" 2. MAE (Sai số tuyệt đối trung bình) : {metrics['MAE']:,.2f} USD",
+        f" 3. RMSE (Căn bậc hai sai số toàn phương) : {metrics['RMSE']:,.2f} USD",
+        f" 4. MAPE (Sai số phần trăm trung bình) : {metrics['MAPE (%)']:.2f} %",
+        f" 5. R2 Score (Hệ số xác định) : {metrics['R2']:.4f}",
+        f"--------------------------------------------------"
+    ]
+    return "\n".join(report)
+
 
 def evaluate_lightgbm():
     """
@@ -106,24 +131,25 @@ def evaluate_lightgbm():
 
     best_iteration = getattr(model, "best_iteration_", None) or model.n_estimators
     categorical_features = ["Store", "Dept", "Type"]
+
     report = "\n".join([
         "=" * 80,
-        " BÁO CÁO TOÀN DIỆN HIỆU NĂNG MÔ HÌNH LIGHTGBM (WALMART STORE SALES FORECASTING)",
+        " Báo cáo toàn diện hiệu năng mô hình LIGHTGBM (Walmart Store Sales Forecasting)",
         "=" * 80,
         "\n- Cấu hình thiết bị huấn luyện : CPU",
         f"- Điểm dừng tối ưu (Best Iter) : {best_iteration}",
         f"- Tổng số đặc trưng đầu vào   : {X_val.shape[1]}",
         f"- Đặc trưng phân loại (Cats)   : {categorical_features}",
         "\n" + format_metric_report(
-            "LightGBM - TẬP KIỂM ĐỊNH (VALIDATION: 10/2011 - 12/2011)",
+            "LightGBM - Tập kiểm định (Validation: 10/2011 - 12/2011)",
             val_metrics
         ),
         format_metric_report(
-            "LightGBM - TẬP KIỂM THỬ NGOÀI MẪU (TEST: NĂM 2012)",
+            "LightGBM - Tập kiểm thử ngoàn mẫu (Test: NĂM 2012)",
             test_metrics
         ),
         "=" * 80,
-        " BẢNG TỔNG HỢP SO SÁNH GIỮA CÁC TẬP KIỂM ĐỊNH",
+        " Bảng tổng hợp so sánh giữa các tập kiểm định",
         "=" * 80,
         f"{'Tập Đánh Giá':<38} | {'WMAE (USD)':<14} | {'MAE (USD)':<12} | {'RMSE (USD)':<12} | {'R2':<8}",
         "-" * 94,
@@ -133,8 +159,11 @@ def evaluate_lightgbm():
     ])
 
     # ============================================================
-    # Save report
+    # Save report to txt (tiếng Việt in thường, chỉ in hoa chữ cái đầu)
     # ============================================================
+
+    val_txt_report = format_txt_report("LightGBM - Tập kiểm định (Validation: 10/2011 - 12/2011)", val_metrics)
+    test_txt_report = format_txt_report("LightGBM - Tập kiểm thử ngoài mẫu (Test: Năm 2012)", test_metrics)
 
     output_file = result_dir / "lightgbm_results.txt"
 
@@ -143,11 +172,26 @@ def evaluate_lightgbm():
         "w",
         encoding="utf-8"
     ) as f:
+        f.write("================================================================================\n")
+        f.write(" Báo cáo toàn diện hiệu năng mô hình LightGBM (Walmart Store Sales Forecasting)\n")
+        f.write("================================================================================\n\n")
+        f.write("- Cấu hình thiết bị huấn luyện : CPU\n")
+        f.write(f"- Điểm dừng tối ưu (Best iteration) : {best_iteration}\n")
+        f.write(f"- Tổng số đặc trưng đầu vào   : {X_val.shape[1]}\n")
+        f.write(f"- Đặc trưng phân loại (Categorical) : {categorical_features}\n\n")
 
-        f.write(f"Validation samples: {len(y_val):,}\n")
-        f.write(f"Holdout samples: {len(y_test):,}\n")
-        f.write(f"Model: {model_path}\n\n")
-        f.write(report)
+        f.write(val_txt_report + "\n\n")
+        f.write(test_txt_report + "\n\n")
+
+        # Bảng tổng hợp so sánh giữa các tập kiểm định
+        f.write("================================================================================\n")
+        f.write(" Bảng tổng hợp so sánh giữa các tập kiểm định\n")
+        f.write("================================================================================\n")
+        f.write(f"{'Tập đánh giá':<35} | {'WMAE (USD)':<15} | {'MAE (USD)':<12} | {'RMSE (USD)':<12} | {'R2':<8}\n")
+        f.write("-" * 88 + "\n")
+        f.write(f"{'Tập kiểm định (Q4/2011 Holiday)':<35} | {val_metrics['WMAE']:<15,.2f} | {val_metrics['MAE']:<12,.2f} | {val_metrics['RMSE']:<12,.2f} | {val_metrics['R2']:<8.4f}\n")
+        f.write(f"{'Tập kiểm thử (2012 Out-of-sample)':<35} | {test_metrics['WMAE']:<15,.2f} | {test_metrics['MAE']:<12,.2f} | {test_metrics['RMSE']:<12,.2f} | {test_metrics['R2']:<8.4f}\n")
+        f.write("================================================================================\n")
 
     # ============================================================
     # Print result
@@ -159,6 +203,9 @@ def evaluate_lightgbm():
     print(
         f"Results saved to: {output_file}"
     )
+
+    return val_metrics, test_metrics
+
 
 if __name__ == "__main__":
     evaluate_lightgbm()
