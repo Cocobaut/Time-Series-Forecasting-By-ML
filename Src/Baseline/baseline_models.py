@@ -16,28 +16,75 @@ def load_preprocessed_data() -> pd.DataFrame:
     Tải dữ liệu đã qua tiền xử lý từ Data/Preprocess Data.
     """
     # TODO: Đọc file processed_train.parquet từ config
-    pass
+    df = pd.read_parquet("/mnt/c/Study/year4/ML/Time-Series-Forecasting-By-ML/Data/Preprocess Data/data/processed_train.parquet")
+    print(df.columns.tolist())
+    print(df.head())
+    print(df.shape)
+
+    return df
+    
 
 def run_naive_baseline(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Dự báo bằng mô hình Naive: Doanh số tuần sau bằng đúng tuần trước (y_t = y_{t-1}).
     """
     # TODO: Dự báo dựa trên lag_1
-    pass
+    y_true = df["Weekly_Sales"].to_numpy()
+    y_pred = df["sales_lag_1"].to_numpy()
+    is_holiday = df["IsHoliday"].to_numpy()
+
+    # Chỉ giữ những dòng có prediction hợp lệ
+    valid = ~np.isnan(y_pred)
+
+    return (
+        y_true[valid],
+        y_pred[valid],
+        is_holiday[valid]
+    )
 
 def run_seasonal_naive_baseline(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Dự báo bằng mô hình Seasonal Naive: Doanh số bằng cùng kỳ tuần này năm trước (y_t = y_{t-52}).
     """
     # TODO: Dự báo dựa trên lag_52
-    pass
+    y_true = df["Weekly_Sales"].to_numpy()
+    y_pred = df["sales_lag_52"].to_numpy()
+    is_holiday = df["IsHoliday"].to_numpy()
+
+    valid = ~np.isnan(y_pred)
+
+    return (
+        y_true[valid],
+        y_pred[valid],
+        is_holiday[valid]
+    )
 
 def run_moving_average_baseline(df: pd.DataFrame, window: int = 4) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Dự báo bằng mô hình thống kê Moving Average: Trung bình trượt N tuần gần nhất.
     """
     # TODO: Dự báo bằng rolling mean N tuần
-    pass
+    df = df.sort_values(["Store", "Dept", "Date"]).copy()
+
+    # MA của các tuần TRƯỚC, không bao gồm tuần hiện tại
+    df["ma_prediction"] = (
+        df.groupby(["Store", "Dept"])["Weekly_Sales"]
+        .transform(
+            lambda x: x.shift(1).rolling(window).mean()
+        )
+    )
+
+    y_true = df["Weekly_Sales"].to_numpy()
+    y_pred = df["ma_prediction"].to_numpy()
+    is_holiday = df["IsHoliday"].to_numpy()
+
+    valid = ~np.isnan(y_pred)
+
+    return (
+        y_true[valid],
+        y_pred[valid],
+        is_holiday[valid]
+    )
 
 def evaluate_and_save_baselines():
     """
@@ -48,7 +95,48 @@ def evaluate_and_save_baselines():
     result_dir.mkdir(parents=True, exist_ok=True)
 
     # TODO: Chạy các hàm baseline, đánh giá metric qua Metric.metrics và ghi file txt kết quả
-    pass
+    df = load_preprocessed_data()
+
+    # 2. Chạy các baseline
+    baselines = {
+        "Naive": run_naive_baseline(df),
+        "Seasonal Naive": run_seasonal_naive_baseline(df),
+        "Moving Average (4 weeks)": run_moving_average_baseline(
+            df, window=4
+        )
+    }
+
+    # 3. Đánh giá
+    reports = []
+
+    for model_name, (y_true, y_pred, is_holiday) in baselines.items():
+
+        metrics = evaluate_all(
+            y_true,
+            y_pred,
+            is_holiday
+        )
+
+        report = format_metric_report(
+            model_name,
+            metrics
+        )
+
+        reports.append(report)
+
+    # 4. Ghi kết quả
+    output_file = result_dir / "baseline_results.txt"
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(
+            "BASELINE BENCHMARK RESULTS\n"
+            "==========================\n\n"
+        )
+
+        for report in reports:
+            f.write(report)
+
+    print(f"Baseline results saved to: {output_file}")
 
 if __name__ == "__main__":
     evaluate_and_save_baselines()
