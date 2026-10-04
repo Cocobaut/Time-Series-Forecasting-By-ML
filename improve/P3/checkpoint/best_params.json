@@ -1,0 +1,12 @@
+{
+    "best_val_wmae": 2126.3402430761826,
+    "params": {
+        "learning_rate": 0.06133857693501012,
+        "num_leaves": 60,
+        "min_child_samples": 25,
+        "subsample": 0.855269907953647,
+        "colsample_bytree": 0.7820457481218803,
+        "reg_alpha": 0.002827585657311758,
+        "reg_lambda": 0.06786479434196534
+    }
+}
