@@ -13,14 +13,11 @@ from Metric.metrics import evaluate_all, format_metric_report
 
 def load_preprocessed_data() -> pd.DataFrame:
     """
-    Tải dữ liệu đã qua tiền xử lý từ Data/Preprocess Data.
+    Tải dữ liệu đã qua tiền xử lý (đường dẫn processed_train_parquet trong Config/config.toml).
     """
-    # TODO: Đọc file processed_train.parquet từ config
-    df = pd.read_parquet("/mnt/c/Study/year4/ML/Time-Series-Forecasting-By-ML/Data/Preprocess Data/data/processed_train.parquet")
-    print(df.columns.tolist())
-    print(df.head())
-    print(df.shape)
-
+    config = load_config()
+    df = pd.read_parquet(get_path(config["paths"]["files"]["processed_train_parquet"]))
+    print(f"Loaded processed train: {df.shape[0]:,} rows x {df.shape[1]} columns")
     return df
     
 

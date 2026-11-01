@@ -25,7 +25,11 @@
    - [5.2. Tiền xử lý dữ liệu & Kỹ thuật đặc trưng (Data Preprocessing)](#52-tiền-xử-lý-dữ-liệu--kỹ-thuật-đặc-trưng-data-preprocessing)
    - [5.3. Các mô hình Machine Learning thực nghiệm](#53-các-mô-hình-machine-learning-thực-nghiệm)
    - [5.4. Chi tiết các bước cải tiến chuyên sâu (P1, P2, P3)](#54-chi-tiết-các-bước-cải-tiến-chuyên-sâu-p1-p2-p3)
-6. [Bảng tổng hợp đối sánh toàn diện & Kết luận](#6-bảng-tổng-hợp-đối-sánh-toàn-diện--kết-luận)
+6. [Bảng tổng hợp đối sánh & Kết luận](#6-bảng-tổng-hợp-đối-sánh--kết-luận)
+   - [6.1. Tiến trình cải tiến (3 seed)](#61-tiến-trình-cải-tiến-3-seed)
+   - [6.2. Kết luận & đóng góp kỹ thuật](#62-kết-luận--đóng-góp-kỹ-thuật)
+   - [6.3. Hạn chế](#63-hạn-chế)
+7. [Đánh giá mở rộng: CV, đa seed, tuning, tuyến tính & ablation](#7-đánh-giá-mở-rộng-cv-đa-seed-tuning-tuyến-tính--ablation)
 
 ---
 
@@ -83,7 +87,7 @@ flowchart TD
     end
 
     subgraph S5["Tầng Đánh Giá & Đầu Ra (Evaluation & Export)"]
-        EVAL["Đánh giá đa chiều:<br/>WMAE (Metric chính), MAE, RMSE, MAPE, R2"]
+        EVAL["Đánh giá đa chiều:<br/>WMAE (Metric chính), MAE, RMSE, MASE, MAPE, R2<br/>Rolling Origin CV · 3 seed · Ablation"]
         OUT["Báo Cáo Đối Sánh & File Dự Báo Tương Lai"]
     end
 
@@ -99,15 +103,21 @@ flowchart TD
 
 ### 2.2. Mô tả chức năng từng module trong hệ thống
 
-1. **`Data/Origin/data/` (Tầng dữ liệu thô):** Lưu trữ 4 file dữ liệu nguyên bản: [train.csv](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/Origin/data/train.csv), [test.csv](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/Origin/data/test.csv), [stores.csv](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/Origin/data/stores.csv), [features.csv](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/Origin/data/features.csv).
-2. **`Data/EDA/eda.py` (Tầng phân tích khám phá):** Thực hiện quy trình 10 bước chuyên sâu, xuất báo cáo trực quan hóa vào `Data/EDA/eda_result/` để phát hiện các rủi ro toán học và định hình chiến lược tiền xử lý.
-3. **`Data/Preprocess Data/preprocess.py` (Tầng tiền xử lý & tạo đặc trưng):** Xây dựng lưới Cartesian product liên tục, tính toán các biến trễ (Lag) an toàn, biến thống kê trượt (Rolling), biến chu kỳ (Sin/Cos), nội suy ngoại sinh, lưu kết quả dưới dạng Parquet tối ưu I/O.
-4. **`Src/Baseline/` (Tầng Benchmark):** Đánh giá các phương pháp cổ điển không học máy để tạo đường cơ sở định lượng.
-5. **`Src/LightGBM/`, `Src/XGBoost/`, `Src/CatBoost/` (Tầng mô hình ML cơ sở):** Huấn luyện độc lập 3 kiến trúc cây tăng cường gradient phổ biến nhất hiện nay trên cùng tập dữ liệu chuẩn hóa 44 đặc trưng.
-6. **`improve/` (Tầng nghiên cứu cải tiến P1, P2, P3):**
-   - `improve/P1/`: Triển khai đồng bộ hàm mất mát L1 và bộ lọc chặn dưới Zero-Clipping.
-   - `improve/P2/`: Bộ nhân hệ số ngày lễ (Holiday Multiplier) và cơ chế hòa trộn có trọng số (Ensemble Blending).
-   - `improve/P3/`: Trích xuất đặc trưng thống kê nhóm (Target Group Statistics) và thuật toán tối ưu hóa siêu tham số tự động Optuna TPESampler.
+Mã nguồn (`Src/`, `Data/`, `Metric/`), trọng số mô hình (`checkpoints/`) và kết quả (`results/`, đánh số theo giai đoạn) được tách riêng; mọi đường dẫn khai báo tập trung trong `Config/config.toml`.
+
+| Module | Chức năng | Kết quả |
+| :--- | :--- | :--- |
+| `Data/Origin/` | Tải 4 file dữ liệu gốc từ Kaggle (`download_data.py`) | `Data/Origin/data/` |
+| `Data/EDA/eda.py` | 10 bước phân tích khám phá, định hình chiến lược tiền xử lý | `results/00_eda/` |
+| `Data/Preprocess/preprocess.py` | Lưới tuần liên tục, lag, rolling, lịch, nội suy biến ngoại sinh | `Data/Preprocess/data/*.parquet` |
+| `Src/Baseline/` | Naive, Seasonal Naive, Moving Average; Ridge/Lasso (`linear_baseline.py`) | `results/01_baseline/` |
+| `Src/LightGBM/`, `Src/XGBoost/`, `Src/CatBoost/` | Huấn luyện / đánh giá 3 GBDT trên 44 đặc trưng | `checkpoints/<model>/`, `results/02_gbdt/` |
+| `Src/Experiments/` | Tuning đồng nhất, đa seed, ablation (đánh giá mô hình gốc); tái lập Hướng 1 × 3 seed | `results/03_tuning`, `05_multiseed`, `06_ablation`, `07_improvement/a_p1_p3` |
+| `Src/Evaluation/` | Rolling Origin CV; sinh bảng đối sánh Markdown + LaTeX | `results/04_time_series_cv`, `08_benchmark_tables` |
+| `Src/Improvement/P1..P3` | P1: L1 + Zero-Clipping · P2: Holiday Multiplier + Blending · P3: Group Stats + Optuna + Super Blend | `checkpoints/p1_*`, `p3_*`, `results/07_improvement/a_p1_p3/` |
+| `Src/Utils/system_profiler.py` | Ghi phần cứng, đo thời gian, đếm số tham số mô hình | `results/hardware_info.json` |
+
+Thư mục `results/` được đánh số theo đúng thứ tự phụ thuộc của pipeline: **00–02** dữ liệu & mô hình gốc → **03–06** đánh giá / phân tích mô hình gốc (tuning → CV, multi-seed; ablation) → **07** ba hướng cải tiến (a → b → c) → **08** bảng tổng hợp cho báo cáo.
 
 ---
 
@@ -132,7 +142,14 @@ flowchart TD
 
 ### 3.2. Kết quả thực nghiệm của Baseline
 
-Đánh giá thực hiện trên tập kiểm thử ngoài mẫu (Holdout Test 2012):
+**(a) Trên Validation Q4/2011 và Holdout Test 2012** — cùng giao thức với các mô hình học máy (trích Bảng 1, mục 7):
+
+| Mô hình Baseline | Val WMAE (Q4/2011) ↓ | Test WMAE (2012) ↓ | Test MAE ↓ | Test RMSE ↓ | Test MASE ↓ |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Seasonal Naive ($y_{t-52}$)** | **2,294.98** | **1,775.43** | **1,768.31** | **3,784.16** | **0.899** |
+| **Moving Average (4W)** | 4,424.14 | 2,006.54 | 1,941.02 | 4,847.24 | 0.987 |
+
+**(b) Trên toàn bộ dữ liệu 2010–2012** (`results/01_baseline/baseline_results.txt`, gồm cả năm đầu chưa đủ lịch sử):
 
 | Mô hình Baseline | WMAE (USD) ↓ | MAE (USD) ↓ | RMSE (USD) ↓ | MAPE (%) ↓ | $R^2$ ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -141,8 +158,10 @@ flowchart TD
 | **Seasonal Naive ($y_{t-52}$)** | 7,236.81 | 7,022.23 | 17,147.09 | 154.77% | 0.4300 |
 
 ### 3.3. Phân tích nguyên nhân chênh lệch hiệu năng Baseline
-- **Moving Average (4W) đạt hiệu quả cao nhất trong nhóm Baseline:** WMAE đạt 2,626.55 USD, $R^2 = 0.9177$. Việc lấy trung bình 4 tuần triệt tiêu được các dao động ngẫu nhiên cục bộ của từng cửa hàng.
-- **Sự sụp đổ của Seasonal Naive:** Mặc dù doanh số bán lẻ có tính chu kỳ 52 tuần rất mạnh, Seasonal Naive lại cho sai số tồi tệ nhất (WMAE lên tới 7,236.81 USD, $R^2$ chỉ 0.4300). Lý do cốt lõi là **sự lệch tuần ngày lễ**: Lễ Tạ Ơn năm 2010 rơi vào tuần 47, nhưng năm 2011 lại rơi vào tuần 48. Phép gán cứng $y_{t-52}$ dẫn đến việc lấy một tuần bình thường gán cho tuần Black Friday và ngược lại, gây ra sai số khổng lồ bị nhân 5 lần trọng số phạt.
+- **Phạm vi đánh giá quyết định thứ hạng:** Trên toàn bộ dữ liệu (b), Seasonal Naive có vẻ "sụp đổ" (WMAE 7,236.81) — nhưng nguyên nhân chính là **52 tuần đầu tiên (02/2010 – 01/2011) chưa có `sales_lag_52`**: preprocess điền giá trị giữ chỗ −1, tức mô hình dự báo ≈ 0 cho cả năm 2010. Đây là tác dụng phụ của cách đánh giá, không phải điểm yếu của phương pháp.
+- **Trên tập đánh giá chuẩn (a), Seasonal Naive là baseline mạnh nhất:** WMAE Test 1,775.43 so với 2,006.54 của Moving Average, và tốt hơn hẳn trên Val Q4 (2,294.98 so với 4,424.14) — vì chu kỳ năm 52 tuần chi phối doanh số lễ hội, trong khi trung bình 4 tuần luôn "trễ pha" ở các đỉnh Thanksgiving / Giáng Sinh.
+- **Holiday Calendar Shift vẫn có tác động:** Thanksgiving rơi vào tuần 47 (2010, 2012) nhưng tuần 48 (2011), nên $y_{t-52}$ lệch đúng một tuần ở các đỉnh lễ — lý do bộ ba `sales_lag_51/52/53` và `weeks_to_thanksgiving` được đưa vào mô hình học máy.
+- Vì vậy mọi so sánh với baseline trong báo cáo dùng **Seasonal Naive trên tập (a)** làm mốc chuẩn; mẫu số của MASE cũng chính là sai số Seasonal Naive trong mẫu.
 
 ---
 
@@ -159,7 +178,7 @@ Trong đó:
 - $w_i$ là trọng số đánh giá:
   $$w_i = \begin{cases} 5, & \text{nếu tuần } i \text{ rơi vào một trong bốn kỳ nghỉ lễ lớn} \\ 1, & \text{nếu là tuần thông thường} \end{cases}$$
 
-### 4.2. Các độ đo hỗ trợ: MAE, RMSE, MAPE, $R^2$
+### 4.2. Các độ đo hỗ trợ: MAE, RMSE, MAPE, $R^2$, MASE
 Để đánh giá toàn diện hành vi mô hình từ nhiều góc độ toán học:
 1. **Mean Absolute Error (MAE):**
    $$\text{MAE} = \frac{1}{n} \sum_{i=1}^n |y_i - \hat{y}_i|$$
@@ -173,6 +192,9 @@ Trong đó:
 4. **Hệ số xác định ($R^2$ Score):**
    $$R^2 = 1 - \frac{\sum_{i=1}^n (y_i - \hat{y}_i)^2}{\sum_{i=1}^n (y_i - \bar{y})^2}$$
    Phản ánh tỷ lệ phần trăm phương sai của doanh số bán lẻ được mô hình giải thích được (càng gần 1.0 càng hoàn hảo).
+5. **Mean Absolute Scaled Error (MASE):**
+   $$\text{MASE} = \frac{\frac{1}{h}\sum_{t=1}^{h}|y_t-\hat{y}_t|}{\frac{1}{N-m}\sum_{t=m+1}^{N}|y_t-y_{t-m}|}, \quad m = 52$$
+   Chuẩn hóa MAE theo sai số Seasonal Naive trong mẫu (chi tiết ở mục 7.1). MASE < 1 nghĩa là tốt hơn việc lặp lại doanh số cùng kỳ năm trước; không phụ thuộc đơn vị và không bùng nổ khi $y \approx 0$ như MAPE.
 
 ### 4.3. Vai trò và ý nghĩa kinh tế trong quản trị chuỗi cung ứng
 - **WMAE (Trọng số 5x ngày lễ):** Trong bán lẻ, tuần lễ hội (Thanksgiving/Black Friday, Giáng Sinh) đóng góp từ 30% đến 50% lợi nhuận cả năm. Thiếu hàng (Stock-out) vào ngày lễ gây thiệt hại doanh thu và mất khách hàng vĩnh viễn; thừa hàng gây ứ đọng vốn và chi phí thanh lý. Trọng số 5x mô phỏng chính xác thiệt hại kinh tế này.
@@ -185,7 +207,7 @@ Trong đó:
 
 ### 5.1. Phân tích khám phá dữ liệu (Chi tiết 10 bước EDA)
 
-Toàn bộ quá trình phân tích khám phá dữ liệu được thiết kế và triển khai có hệ thống trong module [Data/EDA/eda.py](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/EDA/eda.py) gồm 10 bước độc lập:
+Toàn bộ quá trình phân tích khám phá dữ liệu được thiết kế và triển khai có hệ thống trong module [Data/EDA/eda.py](Data/EDA/eda.py) gồm 10 bước độc lập (15 biểu đồ lưu tại `results/00_eda/`):
 
 ```
 [EDA Workflow: 10 Bước Phân Tích Chuyên Sâu]
@@ -292,7 +314,7 @@ Toàn bộ quá trình phân tích khám phá dữ liệu được thiết kế 
 
 ### 5.2. Tiền xử lý dữ liệu & Kỹ thuật đặc trưng (Data Preprocessing)
 
-Toàn bộ phát hiện từ 10 bước EDA được chuyển hóa thành các giải pháp kỹ thuật cụ thể trong module [Data/Preprocess Data/preprocess.py](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/Data/Preprocess%20Data/preprocess.py):
+Toàn bộ phát hiện từ 10 bước EDA được chuyển hóa thành các giải pháp kỹ thuật cụ thể trong module [Data/Preprocess/preprocess.py](Data/Preprocess/preprocess.py):
 
 #### 1. Xây dựng khung lưới thời gian liên tục (Continuous Cartesian Grid)
 - **Lý do:** Khắc phục 20.14% chuỗi bị đứt gãy phát hiện ở Bước 1 EDA, đảm bảo mọi phép toán trễ theo tuần đều rơi đúng vào khoảng cách thời gian 7 ngày.
@@ -351,27 +373,29 @@ Ba thuật toán hàng đầu trong học máy có giám sát dạng bảng (Tab
   - Sử dụng thuật toán Histogram-based để gom nhóm các giá trị số liên tục thành 255 bins rời rạc, giúp giảm thiểu chi phí tính toán điểm cắt nhánh.
   - Áp dụng kỹ thuật phát triển cây theo chiều sâu tối ưu hóa lá (**Leaf-wise tree growth**) thay vì theo từng tầng (Level-wise), cho phép cây hội tụ nhanh và tối thiểu hóa sai số hàm mất mát tốt hơn với cùng số lượng lá.
 - **Lý do chọn:** Tốc độ huấn luyện vượt trội, tiêu tốn ít bộ nhớ RAM, xử lý rất tốt các ma trận thưa và dữ liệu chuỗi thời gian lớn.
-- **Cấu hình ban đầu:** `objective='regression'` (L2 Loss / MSE), `learning_rate=0.08`, `num_leaves=63`, `n_estimators=1000`, thực thi đa luồng CPU (OpenMP).
+- **Cấu hình ban đầu** (`Src/LightGBM/train.py`): `objective='regression'` (L2 Loss / MSE), `learning_rate=0.03`, `num_leaves=31`, `n_estimators=5000` với early stopping 100 vòng trên Val, đa luồng CPU (OpenMP).
 
 #### 2. XGBoost (Extreme Gradient Boosting)
 - **Cơ chế hoạt động:**
   - Xây dựng cây tăng cường dựa trên xấp xỉ chuỗi Taylor bậc 2 của hàm mất mát (cả Gradient $g_i$ bậc 1 và Hessian $h_i$ bậc 2).
   - Tích hợp số hạng điều chuẩn hóa chặt chẽ (Regularization L1 $\alpha$ và L2 $\lambda$) trực tiếp vào hàm mục tiêu để kiểm soát độ phức tạp của cây.
 - **Lý do chọn:** Khả năng kiểm soát hiện tượng quá khớp (overfitting) cực kỳ chặt chẽ; hỗ trợ tăng tốc GPU thuần (CUDA) cho phép huấn luyện siêu nhanh trên card đồ họa NVIDIA RTX 3050.
-- **Cấu hình ban đầu:** `objective='reg:absoluteerror'` (L1 Loss), `tree_method='hist'`, `device='cuda'`, `learning_rate=0.05`, `max_depth=8`, `n_estimators=1000`.
+- **Cấu hình ban đầu** (`Src/XGBoost/train.py`): `objective='reg:absoluteerror'` (L1 Loss), `tree_method='hist'`, `device='cuda'`, `learning_rate=0.05`, `max_depth=8`, `subsample=colsample_bytree=0.8`, `n_estimators=2000` với early stopping 50 vòng.
 
 #### 3. CatBoost (Categorical Boosting)
 - **Cơ chế hoạt động:**
   - Sử dụng kiến trúc cây đối xứng đồng dạng (**Symmetric / Oblivious Trees**): trong cùng một tầng, tất cả các nút đều dùng chung một điều kiện phân nhánh, giúp ngăn chặn hiện tượng quá khớp và cho tốc độ dự báo (inference) cực nhanh.
   - Ứng dụng kỹ thuật **Ordered Boosting** để loại bỏ hiện tượng rò rỉ mục tiêu khi mã hóa các biến phân loại.
 - **Lý do chọn:** Hiệu năng rất cao trên các bài toán có nhiều biến danh mục phân cấp như `Store` và `Dept`, chạy trực tiếp trên GPU.
-- **Cấu hình ban đầu:** `loss_function='RMSE'`, `task_type='GPU'`, `iterations=1000`, `depth=8`, `learning_rate=0.08`.
+- **Cấu hình ban đầu** (`Src/CatBoost/train.py`): `loss_function='RMSE'` + trọng số mẫu WMAE, `eval_metric='MAE'`, `task_type='GPU'`, `iterations=1500`, `depth=8`, `learning_rate=0.08`, early stopping 50 vòng.
 
 ---
 
 #### Kết quả thực nghiệm của 3 mô hình học máy cơ sở
 
-##### Bảng 1: Kết quả trên tập Validation (Q4/2011 — Mùa cao điểm lễ hội x5 trọng số)
+*Kết quả 1 lần chạy (seed 42) từ các checkpoint trong `checkpoints/`, chi tiết tại `results/02_gbdt/`. Phiên bản đã tuning và đánh giá trên 3 seed ở Bảng phụ B, mục 7. LightGBM trong các bảng dưới đã qua Zero-Clipping.*
+
+##### Bảng 5.1: Kết quả trên tập Validation (Q4/2011 — Mùa cao điểm lễ hội x5 trọng số)
 
 | Mô hình | WMAE (USD) ↓ | MAE (USD) ↓ | RMSE (USD) ↓ | MAPE (%) ↓ | $R^2$ ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -379,7 +403,7 @@ Ba thuật toán hàng đầu trong học máy có giám sát dạng bảng (Tab
 | **LightGBM (L2 Loss)** | 2,253.53 | 1,848.64 | 4,836.68 | **201.94%** | 0.9658 |
 | **CatBoost (RMSE Loss)** | 2,662.67 | 2,131.16 | 5,137.14 | 447.85% | 0.9615 |
 
-##### Bảng 2: Kết quả trên tập Holdout Test (Năm 2012 — Ngoài mẫu tương lai)
+##### Bảng 5.2: Kết quả trên tập Holdout Test (Năm 2012 — Ngoài mẫu tương lai)
 
 | Mô hình | WMAE (USD) ↓ | MAE (USD) ↓ | RMSE (USD) ↓ | MAPE (%) ↓ | $R^2$ ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -387,7 +411,7 @@ Ba thuật toán hàng đầu trong học máy có giám sát dạng bảng (Tab
 | **LightGBM (L2 Loss)** | 1,295.66 | 1,275.76 | **2,717.29** | **824.18%** | **0.9849** |
 | **CatBoost (RMSE Loss)** | 1,435.39 | 1,415.16 | 2,991.69 | 1228.04% | 0.9817 |
 
-##### Bảng 3: Đối sánh mức độ cải thiện của Machine Learning so với Baseline tốt nhất (MA 4W)
+##### Bảng 5.3: Đối sánh mức độ cải thiện của Machine Learning so với Moving Average 4W (đánh giá trên toàn bộ dữ liệu, mục 3.2b)
 
 | Mô hình | WMAE Test (USD) | Mức giảm WMAE (%) | RMSE Test (USD) | Mức giảm RMSE (%) | $R^2$ Test |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -405,18 +429,16 @@ Ba thuật toán hàng đầu trong học máy có giám sát dạng bảng (Tab
 
 ### 5.4. Chi tiết các bước cải tiến chuyên sâu (P1, P2, P3)
 
-Dựa trên các hạn chế cốt lõi được chỉ ra trong báo cáo phân tích 3 mô hình (`README_analyze_3_model.md`), một lộ trình cải tiến gồm 3 giai đoạn liên tiếp (P1 $\rightarrow$ P2 $\rightarrow$ P3) đã được triển khai trọn vẹn trong thư mục [improve/](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/improve/):
+Dự án triển khai lộ trình ba giai đoạn cải tiến chuyên sâu trong thư mục [Src/Improvement/](Src/Improvement/), kết quả tương ứng trong `results/07_improvement/a_p1_p3/`:
 
 ```
-improve/
- ├── P1/ (Quick Wins: L1 Loss Alignment & Zero-Clipping)
- ├── P2/ (Post-processing: Holiday Multiplier & Duo-Blending)
- ├── P3/ (Advanced: Target Group Stats & Bayesian Optuna Tuning)
- └── result/
-      ├── P1.txt (Kết quả thực nghiệm P1)
-      ├── P2.txt (Kết quả thực nghiệm P2)
-      └── P3.txt (Kết quả thực nghiệm P3)
+Src/Improvement/                                    results/07_improvement/
+ └── P1/  P2/  P3/   Lộ trình cải tiến P1–P3          └── a_p1_p3/ (P1.txt, P2.txt, P3.txt, multi-seed)
 ```
+
+Dựa trên các hạn chế cốt lõi được chỉ ra trong báo cáo phân tích 3 mô hình ([`docs/README_analyze_3_model.md`](docs/README_analyze_3_model.md)), lộ trình gồm 3 giai đoạn liên tiếp P1 $\rightarrow$ P2 $\rightarrow$ P3; checkpoint của P1 và P3 lưu tại `checkpoints/p1_lightgbm_l1/` và `checkpoints/p3_lightgbm_optuna/`, báo cáo `P1.txt`, `P2.txt`, `P3.txt` tại `results/07_improvement/a_p1_p3/`.
+
+*Các số liệu trong mục này là 1 lần chạy (seed 42). Phiên bản tái lập trên 3 seed (mean ± std) ở Bảng 1, mục 7.*
 
 ---
 
@@ -427,7 +449,7 @@ improve/
 - **Hiện tượng nổ MAPE (824% - 1228%):** Nhiều phòng ban có doanh số thực tế rất nhỏ (tiệm cận 0 USD). Khi mô hình cây dự báo ra giá trị âm (ví dụ: -20 USD), phép chia $\frac{|y - \hat{y}|}{y}$ làm sai số phần trăm bùng nổ lên hàng nghìn phần trăm, đồng thời tạo ra các dự báo phi thực tế trong kinh doanh.
 
 ##### 2. Cách thức thực hiện
-- Chuyển đổi tham số cấu hình của LightGBM trong [improve/P1/train_p1_lightgbm.py](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/improve/P1/train_p1_lightgbm.py):
+- Chuyển đổi tham số cấu hình của LightGBM trong [Src/Improvement/P1/train_p1_lightgbm.py](Src/Improvement/P1/train_p1_lightgbm.py):
   ```python
   params['objective'] = 'regression_l1'  # Tối ưu hóa trực tiếp chuẩn sai số tuyệt đối
   ```
@@ -436,19 +458,20 @@ improve/
   y_pred_clipped = np.clip(y_pred_raw, a_min=0.0, a_max=None)
   ```
 
-##### 3. Kết quả đạt được (Trích xuất từ `improve/result/P1.txt`)
+##### 3. Kết quả đạt được (Trích xuất từ `results/07_improvement/a_p1_p3/P1.txt`)
 
-*Bảng 4: Hiệu quả của Zero-Clipping trên cả 3 mô hình (Tập Holdout Test 2012)*
+*Bảng 5.4: Hiệu quả của Zero-Clipping trên cả 3 mô hình (Tập Holdout Test 2012)*
 
 | Mô hình | WMAE Raw | WMAE Clipped | Mức giảm WMAE | MAPE Raw (%) | MAPE Clipped (%) | Mức giảm MAPE |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **LightGBM (Baseline L2)** | 1,304.14 | 1,298.32 | **-5.82 USD** | 904.52% | 625.81% | **-278.71%** |
-| **LightGBM (P1 - L1 Loss)** | 1,316.14 | 1,315.66 | -0.48 USD | 521.83% | **486.46%** | **-418.06%** |
-| **XGBoost (L1 Loss)** | 1,280.24 | **1,279.43** | -0.81 USD | 1112.70% | 1063.66% | -49.04% |
-| **CatBoost (RMSE Loss)** | 1,440.43 | 1,435.39 | **-5.04 USD** | 1228.04% | 741.52% | **-486.52%** |
+| **LightGBM (Baseline L2)** | 1,301.44 | 1,295.66 | **-5.78 USD** | 824.18% | 541.44% | **-282.74 điểm %** |
+| **LightGBM (P1 - L1 Loss)** | 1,316.14 | 1,315.66 | -0.48 USD | 521.83% | **486.46%** | -35.37 điểm % |
+| **XGBoost (L1 Loss)** | 1,280.24 | **1,279.43** | -0.81 USD | 1112.70% | 1063.66% | -49.04 điểm % |
+| **CatBoost (RMSE Loss)** | 1,440.43 | 1,435.39 | **-5.04 USD** | 1228.04% | 741.52% | **-486.52 điểm %** |
 
 > **Đột phá của Giai đoạn P1:**
-> - **Cắt giảm triệt để sai số phần trăm:** MAPE của LightGBM P1 trên tập Test giảm từ 904.52% xuống còn **486.46%** (giảm 418.06%), trên tập Validation giảm từ 211.31% xuống **84.96%**.
+> - **Cắt giảm triệt để sai số phần trăm:** MAPE trên tập Test giảm từ 824.18% (LightGBM L2) xuống **486.46%** ở P1 (giảm 337.72 điểm %), trên tập Validation từ 201.94% xuống **84.96%**.
+> - **Đánh đổi:** riêng LightGBM, L1 loss làm WMAE tệ hơn L2 (Test 1,315.66 so với 1,295.66) — lợi ích chính của P1 là loại bỏ dự báo âm và chuẩn bị cho blending ở P2.
 > - **Hiệu quả toàn diện của Zero-Clipping:** Ngay lập tức giảm từ 5.0 đến 5.8 USD WMAE trên các mô hình có xu hướng dự báo âm (LightGBM, CatBoost) mà không cần huấn luyện lại.
 
 ---
@@ -462,7 +485,7 @@ improve/
 
 ##### 2. Cách thức thực hiện
 - **Xác định tập phòng ban bùng nổ (Surge Departments):**
-  Lọc tự động 27 phòng ban có tỷ số tăng trưởng doanh số tuần 47 so với trung bình năm vượt ngưỡng: `[5, 6, 7, 8, 9, 10, 11, 12, 14, 17, 18, 20, 21, 22, 23, 24, 25, 27, 31, 32, 34, 45, 55, 72, 87, 92, 95]`.
+  Lọc tự động 27 phòng ban có doanh số tuần 47 ≥ 1.35 × trung bình tuần thường (tính trên Train, `identify_surge_departments`): `[5, 6, 7, 14, 17, 18, 20, 22, 23, 24, 26, 27, 28, 29, 33, 36, 41, 44, 48, 52, 55, 58, 59, 71, 72, 74, 98]`.
 - **Hệ số nhân Thanksgiving Multiplier:**
   Áp dụng công thức hậu xử lý cho tuần lễ 47:
   $$\hat{y}_{i}^{\text{adj}} = \hat{y}_i \times \alpha \quad (\text{với } \alpha = 1.02 \text{ cho 27 phòng ban bùng nổ})$$
@@ -471,9 +494,9 @@ improve/
   $$\hat{y}_{\text{Blend}} = w_1 \cdot \hat{y}_{\text{XGBoost}} + w_2 \cdot \hat{y}_{\text{LightGBM}}$$
   Kết quả xác định bộ trọng số tối ưu: **77.4% XGBoost + 22.6% LightGBM**.
 
-##### 3. Kết quả đạt được (Trích xuất từ `improve/result/P2.txt`)
+##### 3. Kết quả đạt được (Trích xuất từ `results/07_improvement/a_p1_p3/P2.txt`)
 
-*Bảng 5: Hiệu năng đối sánh Giai đoạn P2*
+*Bảng 5.5: Hiệu năng đối sánh Giai đoạn P2*
 
 | Mô hình / Phương pháp | Val WMAE (USD) ↓ | Val RMSE (USD) ↓ | Test WMAE (USD) ↓ | Test RMSE (USD) ↓ | Test $R^2$ ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -499,17 +522,17 @@ improve/
 
 ##### 2. Cách thức thực hiện
 - **Trích xuất 8 đặc trưng Target Group Statistics theo cặp `(Store, Dept)`:**
-  Triển khai trong [improve/P3/features_p3.py](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/improve/P3/features_p3.py):
+  Triển khai trong [Src/Improvement/P3/features_p3.py](Src/Improvement/P3/features_p3.py):
   1. `store_dept_mean`: Doanh số trung bình lịch sử của từng phòng ban tại từng cửa hàng.
   2. `store_dept_median`: Doanh số trung vị lịch sử (chống nhiễu ngoại lệ).
   3. `store_dept_std`: Độ lệch chuẩn doanh số (mức độ biến động).
   4. `store_dept_max`: Doanh số đỉnh từng đạt được.
   5. `store_dept_min`: Doanh số đáy lịch sử.
-  6. `ratio_lag52_to_mean`: Tỷ số giữa doanh số cùng kỳ năm ngoái với trung bình lịch sử $\frac{\text{sales\_lag\_52}}{\text{store\_dept\_mean} + 1.0}$.
-  7. `markdown_to_sales_density`: Tỷ lệ ngân sách khuyến mãi trên doanh số trung bình.
-  8. `is_holiday_surge_dept`: Cờ đánh dấu các phòng ban có mức tăng trưởng lễ hội $\ge 1.4\times$.
+  6. `sales_ratio_to_store_dept_mean`: Tỷ số giữa doanh số cùng kỳ năm ngoái với trung bình lịch sử $\frac{\text{sales\_lag\_52}}{\text{store\_dept\_mean} + 1.0}$.
+  7. `markdown_to_size_ratio`: Mật độ khuyến mãi theo quy mô cửa hàng $\frac{\text{Total\_MarkDown}}{\text{Size} + 1.0}$.
+  8. `is_markdown_available`: Cờ nhận biết tuần có dữ liệu khuyến mãi (MarkDown chỉ có từ 11/2011).
 - **Tối ưu hóa siêu tham số với Optuna (Tree-structured Parzen Estimator - TPESampler):**
-  Huấn luyện và đánh giá trực tiếp hàm mục tiêu WMAE qua 15 trials trong [improve/P3/optuna_tuning.py](file:///e:/Hcmut%20material/AI/Machine%20Learning/Times%20series%20forecasting%20using%20machine%20learning/improve/P3/optuna_tuning.py). Bộ tham số tối ưu thu được:
+  Huấn luyện và đánh giá trực tiếp hàm mục tiêu WMAE qua 8 trials (`run_p3.py`) trong [Src/Improvement/P3/optuna_tuning.py](Src/Improvement/P3/optuna_tuning.py). Bộ tham số tối ưu thu được:
   ```json
   {
     "learning_rate": 0.06133857693501012,
@@ -523,9 +546,9 @@ improve/
   ```
 - **Xây dựng Super Blend:** Hòa trộn giữa XGBoost nền tảng với mô hình LightGBM P3 tối ưu.
 
-##### 3. Kết quả đạt được (Trích xuất từ `improve/result/P3.txt`)
+##### 3. Kết quả đạt được (Trích xuất từ `results/07_improvement/a_p1_p3/P3.txt`)
 
-*Bảng 6: Hiệu năng đối sánh Giai đoạn P3*
+*Bảng 5.6: Hiệu năng đối sánh Giai đoạn P3*
 
 | Mô hình / Phương pháp | Val WMAE (USD) ↓ | Val RMSE (USD) ↓ | Test WMAE (USD) ↓ | Test RMSE (USD) ↓ | Test $R^2$ ↑ |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -543,35 +566,174 @@ improve/
 
 ---
 
-## 6. BẢNG TỔNG HỢP ĐỐI SÁNH TOÀN DIỆN & KẾT LUẬN
+## 6. BẢNG TỔNG HỢP ĐỐI SÁNH & KẾT LUẬN
 
-### 6.1. Bảng đối sánh tiến trình cải tiến xuyên suốt dự án
+### 6.1. Tiến trình cải tiến (3 seed)
 
-Dưới đây là bảng tổng kết toàn bộ hành trình tối ưu hóa giải pháp, từ mô hình cơ sở kinh điển đến giải pháp hòa trộn tối thượng:
+Toàn bộ chuỗi Benchmark → Linear → ML Baseline → P1 → P2 → P3 được huấn luyện lại trên 3 seed (42, 123, 2024) với cùng giao thức chia dữ liệu (`Src/Experiments/run_improvement_multiseed.py`). Mốc chuẩn là Seasonal Naive trên cùng tập đánh giá (mục 3.3).
 
-| Giai đoạn | Phương pháp triển khai | Test WMAE (USD) ↓ | Mức giảm vs Baseline (%) | Val WMAE (USD) ↓ | Test MAPE (%) ↓ | Test $R^2$ ↑ |
+| Giai đoạn | Phương pháp | Val WMAE (Q4/2011) ↓ | Test WMAE (2012) ↓ | Giảm so với Seasonal Naive (Test) | Test MASE ↓ | Test $R^2$ ↑ |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Benchmark Gốc** | **Moving Average (4W)** | 2,626.55 | 0.00% *(Mốc chuẩn)* | *N/A* | 560.07% | 0.9177 |
-| **ML Cơ Sở (Baseline)** | **CatBoost (GPU)** | 1,435.39 | -45.35% | 2,662.67 | 1228.04% | 0.9817 |
-| | **LightGBM (CPU)** | 1,295.66 | -50.67% | 2,253.53 | 824.18% | 0.9849 |
-| | **XGBoost (GPU)** | 1,279.43 | -51.29% | 1,924.47 | 1112.70% | 0.9845 |
-| **Giai đoạn P1** | **L1 Loss + Zero-Clipping** | 1,315.66 | -49.91% | 2,294.93 | **486.46%** *(Triệt tiêu âm)* | 0.9829 |
-| **Giai đoạn P2** | **Weighted Duo Blend (XGB+LGB)** | **1,257.03** | **-52.14%** *(Kỷ lục Test)* | 1,885.49 | 948.12% | **0.9852** |
-| **Giai đoạn P3** | **Optuna GroupStats + SuperBlend** | 1,266.74 | -51.77% | **1,866.73** *(Kỷ lục Val)* | 912.45% | 0.9846 |
+| Benchmark | Seasonal Naive | 2,294.98 | 1,775.43 | 0.0% *(mốc chuẩn)* | 0.899 | 0.9707 |
+| Benchmark | Moving Average 4W | 4,424.14 | 2,006.54 | +13.0% | 0.987 | 0.9520 |
+| Linear | Lasso (thang tương đối) | 3,888.46 | 1,564.00 | −11.9% | 0.781 | 0.9757 |
+| ML Baseline | LightGBM (L2) | 2,295.66 ± 31.38 | 1,300.67 ± 10.33 | −26.7% | 0.650 | 0.9850 |
+| ML Baseline | XGBoost (L1) | 1,906.48 ± 54.88 | 1,280.85 ± 2.48 | −27.9% | 0.638 | 0.9843 |
+| P1 | LightGBM L1 + Zero-Clipping | 2,226.32 ± 10.27 | 1,304.64 ± 11.30 | −26.5% | 0.652 | 0.9833 |
+| **P2** | **Weighted Duo Blend + Multiplier** | 1,887.31 ± 51.29 | **1,264.39 ± 3.04** | **−28.8%** | **0.630** | 0.9849 |
+| P3 | LightGBM đơn + Group Stats + Optuna | 2,095.66 ± 43.55 | 1,327.43 ± 4.81 | −25.2% | 0.663 | 0.9832 |
+| **P3** | **Super Blend + Multiplier** | **1,856.28 ± 38.24** | 1,268.98 ± 0.61 | −28.5% | 0.632 | 0.9845 |
+
+> Các số liệu 1 lần chạy ở mục 5.3 – 5.4 (ví dụ P2 Test 1,257.03; P3 Val 1,866.73) nằm trong dải mean ± std ở trên.
+
+### 6.2. Kết luận & đóng góp kỹ thuật
+
+1. **Ensemble là bước cải tiến có giá trị nhất.** P2 (Duo Blend) tốt nhất trên Test 2012 (hơn P3 khoảng 4.6 USD, 0.4%), P3 (Super Blend) tốt nhất trên Val Q4/2011 (hơn P2 khoảng 31 USD, nằm trong 1 độ lệch chuẩn giữa các seed). Mô hình LightGBM P3 đơn lẻ yếu hơn XGBoost nhưng có sai số đủ khác biệt để bổ trợ trong blend.
+2. **Đặc trưng lịch & ngày lễ quyết định độ chính xác mùa lễ.** Ablation (Bảng phụ E): thêm nhóm lịch + cờ lễ giảm Val WMAE 1,204 USD (−38%); biến ngoại sinh (CPI, Fuel, MarkDown) không giúp ích — phù hợp phát hiện covariate shift ở Bước 7, 10 của EDA.
+3. **Đồng bộ hàm mất mát với thang đo.** XGBoost với L1 loss là mô hình đơn mạnh nhất; CatBoost dùng RMSE loss (MAE trên GPU hội tụ kém) là mô hình yếu nhất kể cả sau khi tuning.
+4. **Mô hình tuyến tính** vượt Seasonal Naive trên Test nhưng thất bại ở Q4: hiệu ứng lễ mang tính nhân theo quy mô phòng ban mà mô hình cộng tính không biểu diễn được — minh chứng cho giá trị của tương tác phi tuyến trong GBDT.
+5. **Đánh giá vững chắc.** Rolling Origin CV cho thấy fold Q4 luôn khó nhất (WMAE gấp ~1.3 – 1.6 lần các fold khác) và thứ hạng LightGBM ≈ XGBoost > CatBoost ổn định khi không dùng lag ngắn hạn.
+
+### 6.3. Hạn chế
+
+- **Giao thức dự báo 1 bước:** Bảng 1 dùng lag 1/2/4/8 lấy từ doanh số thực tế tuần trước, phù hợp dự báo 1 tuần tới. Dự báo đa bước 39 tuần cho `test.csv` cần chỉ dùng lag đủ xa (như chế độ `horizon_safe` của Rolling Origin CV, Bảng phụ A) hoặc dự báo đệ quy.
+- **Val Q4/2011 vừa dùng cho early stopping vừa để chọn trọng số blend** nên số liệu Val của P2/P3 hơi lạc quan; Test 2012 là thước đo khách quan.
+- **Holiday Multiplier và tập phòng ban bùng nổ** được xác định trên một năm lịch sử; Optuna của P3 chỉ chạy 8 trials.
 
 ---
 
-### 6.2. Các kết luận rút ra & Đóng góp kỹ thuật chính
+## 7. ĐÁNH GIÁ MỞ RỘNG: CV, ĐA SEED, TUNING, TUYẾN TÍNH & ABLATION
 
-1. **Hiểu sâu sắc dữ liệu quan trọng hơn thuật toán phức tạp:**
-   - Việc phát hiện ra 20.14% chuỗi bị đứt gãy trong bước 1 EDA và tái lập khung lưới Cartesian liên tục là nền tảng quyết định giúp các biến trễ (Lag) và biến trượt (Rolling) phát huy tối đa sức mạnh.
-   - Việc bóc tách riêng 4 kỳ nghỉ lễ và biến khoảng cách tuần đến Thanksgiving đã giải quyết triệt để bài toán lệch pha lịch (Holiday Calendar Shift), biến yếu tố gây nhiễu lớn nhất thành đặc trưng dự báo mạnh mẽ nhất.
-2. **Sự đồng bộ giữa hàm mất mát và thang đo đánh giá:**
-   - Việc chuyển đổi LightGBM từ L2 sang L1 Loss và áp dụng nguyên lý L1 trong XGBoost đã chứng minh tầm quan trọng của việc tối ưu hóa đúng trung vị sai số tuyệt đối theo yêu cầu của WMAE.
-3. **Giá trị thực tiễn của kỹ thuật hậu xử lý (Post-Processing):**
-   - Bộ lọc **Zero-Clipping** là một phát hiện đơn giản nhưng cực kỳ uy lực: ngay lập tức cắt giảm hơn 400% MAPE và giảm hàng ngàn USD sai số tổng thể mà không tốn chi phí tính toán.
-   - Bộ nhân **Holiday Multiplier** ($\alpha = 1.02$) trên 27 phòng ban bùng nổ đã giải quyết thành công điểm yếu cố hữu dự báo dưới mức (under-prediction) của các mô hình cây quyết định tại các đỉnh mùa sắm.
-4. **Sức mạnh hiệp đồng của Ensemble Blending:**
-   - Kết hợp giữa tính chính xác L1 của XGBoost và độ ổn định phân tán L2 của LightGBM tạo ra mô hình Duo-Blend vượt trội mọi mô hình đơn lẻ, đưa WMAE tập kiểm thử chạm ngưỡng **1,257.03 USD** và hệ số giải thích $R^2 = 0.9852$.
-5. **Độ ổn định và khả năng khái quát hóa:**
-   - Toàn bộ pipeline từ tiền xử lý, trích xuất đặc trưng đến huấn luyện và hậu xử lý đều tuân thủ nghiêm ngặt nguyên tắc phân tách thời gian (Time-based splitting), loại bỏ hoàn toàn nguy cơ rò rỉ thông tin tương lai, đảm bảo kết quả đạt được có giá trị ứng dụng cao trong môi trường vận hành bán lẻ thực tế.
+### 7.1. Thang đo bổ sung: MASE
+$$\text{MASE} = \frac{\frac{1}{h}\sum_{t=1}^{h}|y_t-\hat{y}_t|}{\frac{1}{N-m}\sum_{t=m+1}^{N}|y_t-y_{t-m}|}, \quad m = 52$$
+Mẫu số là sai số trong mẫu của Seasonal Naive, gộp từ 3,331 chuỗi trên lưới tuần liên tục của tập train (`Metric/metrics.py::compute_mase_scale`). MASE < 1 nghĩa là mô hình tốt hơn việc lặp lại doanh số cùng kỳ năm trước.
+
+### 7.2. Rolling Origin Cross-Validation (expanding window)
+4 fold liên tiếp, mỗi fold dự báo 13 tuần: train đến 2011-04-30 / 2011-07-31 / 2011-10-31 (Q4 Holiday) / 2012-01-31. Ở chế độ `horizon_safe`, mỗi fold che doanh số sau mốc dự báo rồi tái tính lag/rolling bằng các hàm của `preprocess.py`, loại các đặc trưng có độ trễ < 13 tuần; early stopping chỉ dùng 8 tuần cuối của phần train. Mã nguồn: `Src/Evaluation/time_series_cv.py`.
+
+### 7.3. Thực nghiệm đa seed, chi phí tính toán & phần cứng
+Mỗi mô hình chạy trên 3 seed (42, 123, 2024), báo cáo mean ± std (ddof = 1). `Src/Utils/system_profiler.py` ghi CPU/GPU/RAM/OS và phiên bản thư viện, đo `fit_time`/`inference_time` bằng `time.perf_counter()`, và đếm số tham số = tổng số lá + tổng số node split của mọi cây.
+
+### 7.4. Tuning với ngân sách đồng nhất
+LightGBM, XGBoost và CatBoost cùng được tuning bằng Optuna TPE (seed 42), **50 trials hoặc 30 phút** mỗi mô hình, trên cùng tập validation Q4/2011 với mục tiêu WMAE. Không gian siêu tham số chung: learning rate $[0.01, 0.1]$ (log), `num_leaves` $[15, 127]$ (LightGBM) / `max_depth` $[4, 10]$ (XGBoost, CatBoost), subsample và colsample $[0.6, 1.0]$, L1/L2 $[10^{-3}, 10]$ (log). Cấu hình riêng từng thí nghiệm nằm tại `Config/experiments/*.toml`.
+
+### 7.5. Baseline tuyến tính (Ridge / Lasso)
+Hồi quy tuyến tính trên cùng bộ đặc trưng + one-hot Store/Dept/Type (`Src/Baseline/linear_baseline.py`). Ba bước tiền xử lý bắt buộc với mô hình tuyến tính (GBDT không cần): (i) **winsorize** về phân vị [0.1%, 99.9%] của Train — `sales_growth_ratio_4` có ngoại lai tới −8.8×10¹² do chia cho mẫu số ≈ 0; (ii) coi giá trị giữ chỗ −1 của lag 51 – 53 (≈ nửa tập Train) là **thiếu**, thay bằng trung bình và thêm cờ thiếu; (iii) học trên **thang tương đối** y / s (s = doanh số trung bình của chuỗi trên Train, trọng số mẫu × s) vì hiệu ứng lễ mang tính nhân theo quy mô phòng ban. Alpha chọn theo WMAE trên Val.
+
+### 7.6. Ablation study theo nhóm đặc trưng
+XGBoost L1 (tham số ML Baseline), thêm dần 5 nhóm đặc trưng: C1 Lags → C2 + Rolling → C3 + Lịch & cờ lễ → C4 + Biến ngoại sinh → C5 + Group Stats (P3); 3 seed mỗi cấu hình (`Src/Experiments/run_ablation.py`). Feature importance (total gain) lấy từ cấu hình C5:
+
+![Feature importance](results/06_ablation/feature_importance.png)
+
+### 7.7. Các bảng đối sánh trọng tâm (sinh tự động)
+Khối dưới đây được ghi đè bởi `python Src/Evaluation/generate_benchmark_tables.py --update-docs` từ các file JSON kết quả; không chỉnh sửa tay.
+
+<!-- BENCHMARK_TABLES:START -->
+#### 📊 BẢNG 1: Tiến trình Cải tiến Machine Learning & Ensembling (P1, P2, P3)
+
+MASE dùng mẫu số Seasonal Naive (m = 52) tính trên tập train. Benchmark là tất định (std = 0); LightGBM L2/L1 gốc không bật bagging; độ lệch nhỏ giữa các seed của chúng đến từ tính không tất định của huấn luyện đa luồng, còn XGBoost có thêm subsample 0.8.
+
+**Validation Q4/2011** (3 seed: 42, 123, 2024; mean ± std, ddof = 1)
+
+| Phiên bản thực nghiệm | Ý tưởng cải tiến trọng tâm | WMAE (USD) ↓ | MAE (USD) ↓ | RMSE (USD) ↓ | MASE ↓ | MAPE (%) ↓ | R² ↑ | Ghi chú & Đóng góp |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
+| Benchmark Gốc | Seasonal Naive (lag 52) | 2,294.98 ± 0.00 | 2,162.98 ± 0.00 | 4,873.20 ± 0.00 | 1.099 ± 0.000 | 41.6 ± 0.0 | 0.9653 ± 0.0000 | Mốc chuẩn cơ sở: lặp lại doanh số cùng kỳ năm trước |
+| Benchmark Gốc | Moving Average 4 tuần | 4,424.14 ± 0.00 | 3,165.86 ± 0.00 | 10,697.49 ± 0.00 | 1.609 ± 0.000 | 45.6 ± 0.0 | 0.8329 ± 0.0000 | Mốc chuẩn cơ sở: trung bình 4 tuần gần nhất |
+| Linear Baseline | Ridge (alpha = 0.1) với lag features | 3,998.28 ± 0.00 | 3,060.36 ± 0.00 | 7,655.09 ± 0.00 | 1.556 ± 0.000 | 137.5 ± 0.0 | 0.9144 ± 0.0000 | Hồi quy L2 trên thang tương đối y / quy mô chuỗi, lag + one-hot |
+| Linear Baseline | Lasso (alpha = 0.001) với lag features | 3,888.46 ± 0.00 | 2,796.00 ± 0.00 | 7,573.15 ± 0.00 | 1.421 ± 0.000 | 82.5 ± 0.0 | 0.9162 ± 0.0000 | Hồi quy L1 (chọn biến) trên thang tương đối y / quy mô chuỗi |
+| ML Baseline | LightGBM mặc định (L2 loss) | 2,295.66 ± 31.38 | 1,875.89 ± 4.38 | 4,948.02 ± 74.16 | 0.953 ± 0.002 | 141.1 ± 24.1 | 0.9642 ± 0.0011 | Loss L2, tham số thô |
+| ML Baseline | XGBoost mặc định (L1 loss) | 1,906.48 ± 54.88 | 1,688.64 ± 20.66 | 4,588.58 ± 138.61 | 0.858 ± 0.011 | 164.7 ± 42.6 | 0.9692 ± 0.0019 | Loss L1 + trọng số WMAE |
+| Giai đoạn P1 | LightGBM L1 Loss + Zero-Clipping | 2,226.32 ± 10.27 | 1,884.91 ± 9.32 | 5,688.75 ± 184.06 | 0.958 ± 0.005 | 122.4 ± 7.1 | 0.9527 ± 0.0031 | Hàm mất mát L1 + chặn dự báo âm |
+| Giai đoạn P2 | Weighted Duo Blend + Holiday Multiplier | 1,887.31 ± 51.29 | 1,659.43 ± 16.18 | 4,433.23 ± 101.99 | 0.843 ± 0.008 | 159.2 ± 38.3 | 0.9713 ± 0.0013 | Blend XGB + LGB (trọng số tối ưu WMAE) + bù đỉnh Thanksgiving α = 1.02 (w_XGB ≈ 0.84) |
+| Giai đoạn P3 | LightGBM đơn + Group Stats + Optuna | 2,095.66 ± 43.55 | 1,818.70 ± 22.13 | 5,090.22 ± 98.06 | 0.924 ± 0.011 | 177.8 ± 5.4 | 0.9621 ± 0.0015 | Mô hình đơn: 8 đặc trưng thống kê nhóm + siêu tham số Optuna |
+| **Giai đoạn P3 [BEST]** | Group Stats + Optuna + Super Blend + Multiplier | **1,856.28 ± 38.24** | **1,661.43 ± 16.39** | **4,542.16 ± 102.49** | **0.844 ± 0.008** | 168.2 ± 31.8 | 0.9699 ± 0.0014 | Optuna (TPE) + thống kê nhóm Store×Dept + Super Blend (w_XGB ≈ 0.70) |
+
+**Holdout Test 2012** (3 seed: 42, 123, 2024; mean ± std, ddof = 1)
+
+| Phiên bản thực nghiệm | Ý tưởng cải tiến trọng tâm | WMAE (USD) ↓ | MAE (USD) ↓ | RMSE (USD) ↓ | MASE ↓ | MAPE (%) ↓ | R² ↑ | Ghi chú & Đóng góp |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
+| Benchmark Gốc | Seasonal Naive (lag 52) | 1,775.43 ± 0.00 | 1,768.31 ± 0.00 | 3,784.16 ± 0.00 | 0.899 ± 0.000 | 317.6 ± 0.0 | 0.9707 ± 0.0000 | Mốc chuẩn cơ sở: lặp lại doanh số cùng kỳ năm trước |
+| Benchmark Gốc | Moving Average 4 tuần | 2,006.54 ± 0.00 | 1,941.02 ± 0.00 | 4,847.24 ± 0.00 | 0.987 ± 0.000 | 612.7 ± 0.0 | 0.9520 ± 0.0000 | Mốc chuẩn cơ sở: trung bình 4 tuần gần nhất |
+| Linear Baseline | Ridge (alpha = 0.1) với lag features | 1,638.50 ± 0.00 | 1,641.54 ± 0.00 | 3,589.86 ± 0.00 | 0.834 ± 0.000 | 1494.2 ± 0.0 | 0.9737 ± 0.0000 | Hồi quy L2 trên thang tương đối y / quy mô chuỗi, lag + one-hot |
+| Linear Baseline | Lasso (alpha = 0.001) với lag features | 1,564.00 ± 0.00 | 1,537.42 ± 0.00 | 3,445.95 ± 0.00 | 0.781 ± 0.000 | 267.0 ± 0.0 | 0.9757 ± 0.0000 | Hồi quy L1 (chọn biến) trên thang tương đối y / quy mô chuỗi |
+| ML Baseline | LightGBM mặc định (L2 loss) | 1,300.67 ± 10.33 | 1,279.49 ± 9.90 | 2,711.35 ± 13.02 | 0.650 ± 0.005 | 659.2 ± 37.2 | 0.9850 ± 0.0001 | Loss L2, tham số thô |
+| ML Baseline | XGBoost mặc định (L1 loss) | 1,280.85 ± 2.48 | 1,255.05 ± 4.83 | 2,769.68 ± 23.48 | 0.638 ± 0.002 | 1033.3 ± 141.5 | 0.9843 ± 0.0003 | Loss L1 + trọng số WMAE |
+| Giai đoạn P1 | LightGBM L1 Loss + Zero-Clipping | 1,304.64 ± 11.30 | 1,283.12 ± 10.67 | 2,854.91 ± 34.23 | 0.652 ± 0.005 | 526.4 ± 45.5 | 0.9833 ± 0.0004 | Hàm mất mát L1 + chặn dự báo âm |
+| **Giai đoạn P2 [BEST]** | Weighted Duo Blend + Holiday Multiplier | **1,264.39 ± 3.04** | **1,239.44 ± 4.91** | **2,717.99 ± 18.45** | **0.630 ± 0.002** | 974.8 ± 126.2 | 0.9849 ± 0.0002 | Blend XGB + LGB (trọng số tối ưu WMAE) + bù đỉnh Thanksgiving α = 1.02 (w_XGB ≈ 0.84) |
+| Giai đoạn P3 | LightGBM đơn + Group Stats + Optuna | 1,327.43 ± 4.81 | 1,305.20 ± 6.23 | 2,868.39 ± 9.77 | 0.663 ± 0.003 | 712.9 ± 58.8 | 0.9832 ± 0.0001 | Mô hình đơn: 8 đặc trưng thống kê nhóm + siêu tham số Optuna |
+| Giai đoạn P3 | Group Stats + Optuna + Super Blend + Multiplier | 1,268.98 ± 0.61 | 1,244.08 ± 1.54 | 2,751.90 ± 13.26 | 0.632 ± 0.001 | 941.4 ± 138.3 | 0.9845 ± 0.0001 | Optuna (TPE) + thống kê nhóm Store×Dept + Super Blend (w_XGB ≈ 0.70) |
+
+---
+
+##### Bảng phụ A: Rolling Origin Cross-Validation (expanding window, 4 fold × 13 tuần; mean ± std qua fold)
+
+| Mô hình | Feature mode | #Fold | MAE | RMSE | MASE | WMAE | WMAE từng fold |
+| :--- | :---: | :---: | ---: | ---: | ---: | ---: | :--- |
+| catboost | horizon_safe | 4 | 2,204.03 ± 443.52 | 4,678.50 ± 1,309.21 | 1.072 ± 0.235 | 2,273.91 ± 526.09 | 2,352 / 1,850 / 2,987 / 1,905 |
+| lightgbm | horizon_safe | 4 | 1,882.81 ± 292.84 | 4,680.80 ± 1,836.13 | 0.916 ± 0.164 | 1,963.67 ± 411.77 | 1,952 / 1,588 / 2,540 / 1,775 |
+| xgboost | horizon_safe | 4 | 1,882.54 ± 279.81 | 4,795.91 ± 1,929.02 | 0.915 ± 0.148 | 1,982.46 ± 428.65 | 2,025 / 1,633 / 2,572 / 1,700 |
+
+---
+
+##### Bảng phụ B: 3 mô hình GBDT — đa seed, thời gian huấn luyện & số tham số
+
+Số tham số = tổng số lá + tổng số node split của toàn bộ cây.
+
+| Mô hình | Thiết bị | Tham số | #Seed | Val WMAE | Test WMAE | Test MAE | Test RMSE | Test MASE | Fit time (s) | Inference (s) | Số tham số |
+| :--- | :---: | :---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| lightgbm | cpu | tuned | 3 | 2,121.34 ± 87.49 | 1,290.87 ± 4.64 | 1,269.50 ± 5.13 | 2,818.54 ± 11.59 | 0.645 ± 0.003 | 154.2 ± 49.4 | 5.93 | 586,225 ± 183,584 |
+| xgboost | gpu | tuned | 3 | 1,785.02 ± 57.25 | 1,264.82 ± 5.31 | 1,237.98 ± 4.76 | 2,751.49 ± 20.51 | 0.629 ± 0.002 | 72.9 ± 9.9 | 0.62 | 2,154,599 ± 263,964 |
+| catboost | gpu | tuned | 3 | 2,696.62 ± 52.79 | 1,453.25 ± 22.96 | 1,434.26 ± 19.64 | 3,055.42 ± 34.94 | 0.729 ± 0.010 | 18.0 ± 3.8 | 0.25 | 120,296 ± 28,153 |
+
+---
+
+##### Bảng phụ C: Tuning Optuna với ngân sách đồng nhất (50 trials / 30 phút)
+
+| Mô hình | Best Val WMAE | Số trial | Thời gian (phút) | Siêu tham số tốt nhất |
+| :--- | ---: | ---: | ---: | :--- |
+| catboost | 2,636.53 | 50 | 17.5 | learning_rate=0.0513, max_depth=8, subsample=0.643, colsample_bytree=0.688, reg_alpha=0.03, reg_lambda=0.00117 |
+| lightgbm | 2,108.84 | 34 | 30.7 | learning_rate=0.0572, num_leaves=90, subsample=0.795, colsample_bytree=0.67, reg_alpha=0.0344, reg_lambda=0.00167 |
+| xgboost | 1,723.67 | 39 | 30.6 | learning_rate=0.0237, max_depth=10, subsample=0.893, colsample_bytree=0.839, reg_alpha=0.00421, reg_lambda=0.00421 |
+
+---
+
+##### Bảng phụ D: Ablation study theo nhóm đặc trưng (XGBoost L1 (ML Baseline params), 3 seed)
+
+Δ = thay đổi Val WMAE so với cấu hình liền trước (âm = tốt hơn).
+
+| Cấu hình | Nhóm đặc trưng (cộng dồn) | #Đặc trưng | Val WMAE | Δ Val WMAE | Val MASE | Test WMAE | Test MASE |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| C1 | Lags | 12 | 3,162.87 ± 42.88 | — | 1.191 ± 0.016 | 1,359.98 ± 6.20 | 0.676 ± 0.002 |
+| C2 | + Rolling | 18 | 3,060.47 ± 32.80 | -102.39 | 1.147 ± 0.014 | 1,351.88 ± 1.94 | 0.671 ± 0.001 |
+| C3 | + Calendar & holiday flags | 33 | 1,856.31 ± 43.36 | -1,204.16 | 0.825 ± 0.010 | 1,267.93 ± 2.95 | 0.630 ± 0.001 |
+| C4 | + Exogenous (bộ đầy đủ) | 44 | 1,900.69 ± 48.32 | +44.37 | 0.854 ± 0.018 | 1,281.69 ± 3.66 | 0.638 ± 0.002 |
+| C5 | + Target Group Stats (P3) | 52 | 1,838.52 ± 2.46 | -62.17 | 0.844 ± 0.005 | 1,311.60 ± 3.06 | 0.653 ± 0.001 |
+
+**Top-10 feature importance** (cấu hình C5, theo total gain; hình: `results/06_ablation/feature_importance.png`)
+
+| # | Đặc trưng | Gain (%) | Split count (%) |
+| ---: | :--- | ---: | ---: |
+| 1 | sales_lag_1 | 33.03% | 3.71% |
+| 2 | Dept | 12.18% | 17.53% |
+| 3 | Store | 9.96% | 16.83% |
+| 4 | sales_rolling_mean_4 | 8.47% | 1.61% |
+| 5 | store_dept_median | 8.32% | 1.06% |
+| 6 | sales_growth_ratio_4 | 2.49% | 5.81% |
+| 7 | sales_ratio_to_store_dept_mean | 1.58% | 3.21% |
+| 8 | Week | 1.51% | 2.45% |
+| 9 | sales_rolling_std_4 | 1.49% | 3.72% |
+| 10 | store_dept_mean | 1.47% | 1.01% |
+
+---
+
+##### Cấu hình phần cứng
+
+| Thành phần | Chi tiết |
+| :--- | :--- |
+| CPU | 12th Gen Intel(R) Core(TM) i7-12700H (14 nhân / 20 luồng) |
+| RAM | 31.71 GB |
+| GPU | NVIDIA GeForce RTX 3050 Laptop GPU (4.0 GB) |
+| Hệ điều hành | Windows 10 (10.0.26300) |
+| Python | 3.10.21 |
+| Thư viện | numpy 2.2.6, pandas 2.3.3, sklearn 1.7.2, lightgbm 4.7.0, xgboost 3.2.0, catboost 1.2.10, optuna 5.0.0, scipy 1.15.3 |
+<!-- BENCHMARK_TABLES:END -->

@@ -11,3 +11,6 @@ joblib>=1.3.0
 pyarrow>=12.0.0
 statsmodels>=0.14.0
 tomli>=2.0.0; python_version < "3.11"
+scipy>=1.10.0
+optuna>=3.0.0
+psutil>=5.9.0  # tùy chọn: Src/Utils/system_profiler.py tự lùi về lệnh hệ thống nếu thiếu

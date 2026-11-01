@@ -1,10 +1,13 @@
-# Cấu hình các đường dẫn tương đối dẫn đến thư mục Data, Metric, và Src
+# Cấu hình tập trung MỌI đường dẫn tương đối của dự án (tính từ thư mục gốc).
+#   - Code nằm trong Src/, Data/, Metric/
+#   - Trọng số mô hình nằm trong checkpoints/
+#   - Mọi kết quả thực nghiệm nằm trong results/, đánh số theo thứ tự giai đoạn của pipeline
 
 [paths.data]
 origin_dir = "Data/Origin/data"
 eda_dir = "Data/EDA"
-eda_result_dir = "Data/EDA/result"
-preprocess_dir = "Data/Preprocess Data/data"
+eda_result_dir = "results/00_eda"
+preprocess_dir = "Data/Preprocess/data"
 
 [paths.files]
 train_csv = "Data/Origin/data/train.csv"
@@ -13,29 +16,57 @@ stores_csv = "Data/Origin/data/stores.csv"
 test_csv = "Data/Origin/data/test.csv"
 sample_submission_csv = "Data/Origin/data/sampleSubmission.csv"
 
-processed_train_parquet = "Data/Preprocess Data/data/processed_train.parquet"
-processed_test_parquet = "Data/Preprocess Data/data/processed_test.parquet"
-processed_train_csv = "Data/Preprocess Data/data/processed_train.csv"
-processed_test_csv = "Data/Preprocess Data/data/processed_test.csv"
+processed_train_parquet = "Data/Preprocess/data/processed_train.parquet"
+processed_test_parquet = "Data/Preprocess/data/processed_test.parquet"
+processed_train_csv = "Data/Preprocess/data/processed_train.csv"
+processed_test_csv = "Data/Preprocess/data/processed_test.csv"
 
 [paths.metric]
 dir = "Metric"
 
+# Thư mục kết quả theo giai đoạn (get_result_dir(<khóa>) trong Config/__init__.py)
+#   00-02: dữ liệu & mô hình gốc | 03-06: đánh giá / phân tích mô hình gốc
+#   07: ba hướng cải tiến (a) P1-P3, (b) Hierarchical, (c) P3 + Hierarchical | 08: bảng tổng hợp cho báo cáo
+[paths.results]
+root = "results"
+eda = "results/00_eda"
+baseline = "results/01_baseline"
+gbdt = "results/02_gbdt"
+tuning = "results/03_tuning"
+cv = "results/04_time_series_cv"
+multiseed = "results/05_multiseed"
+ablation = "results/06_ablation"
+improvement = "results/07_improvement/a_p1_p3"
+improvement_multiseed = "results/07_improvement/a_p1_p3"
+hierarchical = "results/07_improvement/b_hierarchical"
+combined = "results/07_improvement/c_combined_p3_hierarchical"
+benchmark = "results/08_benchmark_tables"
+archive = "results/_archive"
+
+# Thư mục trọng số mô hình (get_checkpoint_dir(<khóa>))
+[paths.checkpoints]
+root = "checkpoints"
+lightgbm = "checkpoints/lightgbm"
+xgboost = "checkpoints/xgboost"
+catboost = "checkpoints/catboost"
+p1_lightgbm_l1 = "checkpoints/p1_lightgbm_l1"
+p3_lightgbm_optuna = "checkpoints/p3_lightgbm_optuna"
+
 [paths.models.baseline]
 dir = "Src/Baseline"
-result_dir = "Src/Baseline/Result"
+result_dir = "results/01_baseline"
 
 [paths.models.lightgbm]
 dir = "Src/LightGBM"
-checkpoint_dir = "Src/LightGBM/checkpoint"
-result_dir = "Src/LightGBM/Result"
+checkpoint_dir = "checkpoints/lightgbm"
+result_dir = "results/02_gbdt/lightgbm"
 
 [paths.models.xgboost]
 dir = "Src/XGBoost"
-checkpoint_dir = "Src/XGBoost/checkpoint"
-result_dir = "Src/XGBoost/Result"
+checkpoint_dir = "checkpoints/xgboost"
+result_dir = "results/02_gbdt/xgboost"
 
 [paths.models.catboost]
 dir = "Src/CatBoost"
-checkpoint_dir = "Src/CatBoost/checkpoint"
-result_dir = "Src/CatBoost/Result"
+checkpoint_dir = "checkpoints/catboost"
+result_dir = "results/02_gbdt/catboost"

@@ -1,0 +1,63 @@
+{
+  "experiment": "xgboost_tuned",
+  "model": "xgboost",
+  "device": "gpu",
+  "metric": "WMAE",
+  "best_val_wmae": 1723.6695394803476,
+  "best_trial": 0,
+  "best_iteration": 1486,
+  "params": {
+    "learning_rate": 0.023688639503640783,
+    "max_depth": 10,
+    "subsample": 0.892797576724562,
+    "colsample_bytree": 0.8394633936788146,
+    "reg_alpha": 0.004207988669606638,
+    "reg_lambda": 0.004207053950287938
+  },
+  "library_params": {
+    "learning_rate": 0.023688639503640783,
+    "max_depth": 10,
+    "subsample": 0.892797576724562,
+    "colsample_bytree": 0.8394633936788146,
+    "reg_alpha": 0.004207988669606638,
+    "reg_lambda": 0.004207053950287938
+  },
+  "budget": {
+    "n_trials": 50,
+    "timeout_minutes": 30,
+    "n_estimators_per_trial": 1500,
+    "early_stopping_rounds": 50
+  },
+  "n_trials_completed": 39,
+  "total_time_s": 1836.6656994000077,
+  "search_space": {
+    "learning_rate": {
+      "low": 0.01,
+      "high": 0.1,
+      "log": true
+    },
+    "max_depth": {
+      "low": 4,
+      "high": 10
+    },
+    "subsample": {
+      "low": 0.6,
+      "high": 1.0
+    },
+    "colsample_bytree": {
+      "low": 0.6,
+      "high": 1.0
+    },
+    "reg_alpha": {
+      "low": 0.001,
+      "high": 10.0,
+      "log": true
+    },
+    "reg_lambda": {
+      "low": 0.001,
+      "high": 10.0,
+      "log": true
+    }
+  },
+  "quick": false
+}

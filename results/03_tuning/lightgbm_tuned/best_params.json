@@ -1,0 +1,64 @@
+{
+  "experiment": "lightgbm_tuned",
+  "model": "lightgbm",
+  "device": "cpu",
+  "metric": "WMAE",
+  "best_val_wmae": 2108.8374015431395,
+  "best_trial": 28,
+  "best_iteration": 1500,
+  "params": {
+    "learning_rate": 0.0571595852394282,
+    "num_leaves": 90,
+    "subsample": 0.7948033266449588,
+    "colsample_bytree": 0.669751303234014,
+    "reg_alpha": 0.03443826276834183,
+    "reg_lambda": 0.0016710206275659836
+  },
+  "library_params": {
+    "learning_rate": 0.0571595852394282,
+    "num_leaves": 90,
+    "subsample": 0.7948033266449588,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.669751303234014,
+    "reg_alpha": 0.03443826276834183,
+    "reg_lambda": 0.0016710206275659836
+  },
+  "budget": {
+    "n_trials": 50,
+    "timeout_minutes": 30,
+    "n_estimators_per_trial": 1500,
+    "early_stopping_rounds": 50
+  },
+  "n_trials_completed": 34,
+  "total_time_s": 1840.5359172000026,
+  "search_space": {
+    "learning_rate": {
+      "low": 0.01,
+      "high": 0.1,
+      "log": true
+    },
+    "num_leaves": {
+      "low": 15,
+      "high": 127
+    },
+    "subsample": {
+      "low": 0.6,
+      "high": 1.0
+    },
+    "colsample_bytree": {
+      "low": 0.6,
+      "high": 1.0
+    },
+    "reg_alpha": {
+      "low": 0.001,
+      "high": 10.0,
+      "log": true
+    },
+    "reg_lambda": {
+      "low": 0.001,
+      "high": 10.0,
+      "log": true
+    }
+  },
+  "quick": false
+}
