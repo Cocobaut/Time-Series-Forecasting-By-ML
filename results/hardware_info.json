@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-11-01T12:08:30",
+  "os": "Windows 10 (10.0.26300)",
+  "machine": "AMD64",
+  "python": "3.10.21",
+  "cpu": {
+    "name": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "physical_cores": 14,
+    "logical_threads": 20
+  },
+  "ram_gb": 31.71,
+  "gpus": [
+    {
+      "name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+      "vram_gb": 4.0,
+      "driver": "610.62"
+    }
+  ],
+  "libraries": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "sklearn": "1.7.2",
+    "lightgbm": "4.7.0",
+    "xgboost": "3.2.0",
+    "catboost": "1.2.10",
+    "optuna": "5.0.0",
+    "scipy": "1.15.3"
+  }
+}

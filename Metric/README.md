@@ -74,6 +74,27 @@ Trong đó $\bar{y}$ là giá trị trung bình thực tế của doanh số.
 
 ---
 
+## 6. MASE (Mean Absolute Scaled Error)
+
+### Công thức (Hyndman & Koehler, 2006):
+$$\text{MASE} = \frac{\frac{1}{h} \sum_{t=1}^{h} |y_t - \hat{y}_t|}{\frac{1}{N - m} \sum_{t=m+1}^{N} |y_t - y_{t-m}|}$$
+
+Trong đó:
+* Tử số: MAE của dự báo trên $h$ điểm cần đánh giá.
+* Mẫu số: MAE trong mẫu của dự báo Seasonal Naive trên $N$ điểm train; $m = 52$ (mùa vụ năm, mặc định) hoặc $m = 1$ (Naive 1 bước).
+
+### Hiện thực cho dữ liệu panel 3,331 chuỗi:
+* `calculate_mase(y_true, y_pred, y_train=..., seasonality=52)` — một chuỗi đơn.
+* `compute_mase_scale(train_df, seasonality=52)` — tái lập lưới tuần liên tục cho từng chuỗi (Store, Dept) (tuần khuyết = NaN) rồi gộp mọi $|y_t - y_{t-m}|$ hợp lệ thành một mẫu số chung (pooled scale).
+* `evaluate_all(..., mase_scale=scale)` trả thêm khóa `"MASE"`; mẫu số luôn tính trên tập train của đúng lần chia đó (mỗi fold CV một mẫu số riêng).
+
+### Ý nghĩa:
+* Không phụ thuộc đơn vị, so sánh được giữa các tập/chuỗi có quy mô khác nhau.
+* MASE < 1: tốt hơn Seasonal Naive trong mẫu; MASE > 1: kém hơn.
+* Không bùng nổ khi $y_t \approx 0$ như MAPE.
+
+---
+
 ## Bảng so sánh tóm tắt
 
 | Thang đo | Đơn vị | Độ nhạy với Outliers | Trọng tâm đánh giá |
@@ -81,5 +102,6 @@ Trong đó $\bar{y}$ là giá trị trung bình thực tế của doanh số.
 | **WMAE** | USD | Trung bình (Tập trung ngày Lễ) | **Thang đo chính của cuộc thi Walmart** |
 | **MAE** | USD | Thấp (Bền vững) | Độ lệch tiền tệ trung bình dễ hiểu |
 | **RMSE** | USD | Rất cao | Phạt sai số lớn |
+| **MASE** | Không thứ nguyên | Thấp | So với Seasonal Naive (m = 52), so sánh được giữa các tập |
 | **MAPE** | % | Trung bình | Tỷ lệ phần trăm sai lệch |
 | **$R^2$** | Không thứ nguyên ($\le 1$) | Cao | Khả năng giải thích biến thiên của mô hình |

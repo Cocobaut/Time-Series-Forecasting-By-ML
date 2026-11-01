@@ -1,0 +1,107 @@
+# =============================================================================
+# Thí nghiệm: XGBoost (tuned) — Walmart Store Sales Forecasting
+# Dùng bởi: Src/Experiments/tune.py, Src/Experiments/run_multiseed.py,
+#           Src/Evaluation/time_series_cv.py
+# Ba file *_tuned.toml dùng CHUNG split, seed, feature, ngân sách tuning và
+# không gian siêu tham số để so sánh công bằng giữa các mô hình.
+# =============================================================================
+
+[experiment]
+name = "xgboost_tuned"
+model = "xgboost"
+description = "XGBoost L1 loss (reg:absoluteerror) + WMAE sample weights, tuned by Optuna (50 trials / 30 min)"
+
+[data]
+target = "Weekly_Sales"
+validation_start = "2011-10-01"   # Train < 2011-10-01
+test_start = "2012-01-01"         # Val = Q4/2011, Holdout test >= 2012-01-01
+holiday_weight = 5.0
+clip_negative = true              # Zero-clipping dự báo âm (P1)
+
+[features]
+# Cột không đưa vào mô hình
+drop_columns = ["Weekly_Sales", "Date"]
+categorical = ["Store", "Dept", "Type"]
+# Các đặc trưng có độ trễ < horizon dự báo; bị loại ở chế độ "horizon_safe"
+horizon_unsafe = [
+    "sales_lag_1", "sales_lag_2", "sales_lag_4", "sales_lag_8",
+    "sales_rolling_mean_4", "sales_rolling_std_4", "sales_rolling_mean_8",
+    "sales_growth_ratio_4", "sales_to_size_ratio",
+]
+# "one_step": dùng đặc trưng tiền xử lý sẵn (mỗi tuần biết doanh số tuần trước — giống P1/P2/P3)
+# "horizon_safe": tái tính lag/rolling từ chuỗi bị che tương lai và bỏ các lag < horizon
+mode = "one_step"
+
+[seeds]
+values = [42, 123, 2024]
+
+[metrics]
+mase_seasonality = 52
+
+[device]
+# "auto" thử CUDA rồi lùi về CPU đa luồng
+type = "auto"
+
+[model.params]
+objective = "reg:absoluteerror"
+eval_metric = "mae"
+tree_method = "hist"
+enable_categorical = true
+max_cat_to_onehot = 1
+n_estimators = 2000
+learning_rate = 0.05
+max_depth = 8
+subsample = 0.8
+colsample_bytree = 0.8
+reg_alpha = 0.01
+reg_lambda = 1.0
+
+[model.fit]
+early_stopping_rounds = 50
+
+[cv]
+horizon_weeks = 13
+feature_mode = "horizon_safe"
+early_stopping_weeks = 8          # ES trên 8 tuần cuối của train mỗi fold (không chạm vào fold val)
+
+[[cv.folds]]
+name = "Fold 1"
+train_end = "2011-04-30"
+val_start = "2011-05-01"
+val_end = "2011-07-31"
+
+[[cv.folds]]
+name = "Fold 2"
+train_end = "2011-07-31"
+val_start = "2011-08-01"
+val_end = "2011-10-31"
+
+[[cv.folds]]
+name = "Fold 3 (Q4 Holiday)"
+train_end = "2011-10-31"
+val_start = "2011-11-01"
+val_end = "2012-01-31"
+
+[[cv.folds]]
+name = "Fold 4"
+train_end = "2012-01-31"
+val_start = "2012-02-01"
+val_end = "2012-04-30"
+
+[tuning]
+n_trials = 50
+timeout_minutes = 30
+sampler_seed = 42
+metric = "WMAE"                   # Tối ưu WMAE trên tập validation Q4/2011
+n_estimators = 1500               # Số cây tối đa trong mỗi trial (có early stopping)
+early_stopping_rounds = 50
+
+# Không gian siêu tham số thống nhất (tên chung, được ánh xạ sang tên riêng của thư viện
+# trong Src/Experiments/model_zoo.py)
+[tuning.search_space]
+learning_rate = { low = 0.01, high = 0.1, log = true }
+max_depth = { low = 4, high = 10 }
+subsample = { low = 0.6, high = 1.0 }
+colsample_bytree = { low = 0.6, high = 1.0 }
+reg_alpha = { low = 1e-3, high = 10.0, log = true }
+reg_lambda = { low = 1e-3, high = 10.0, log = true }

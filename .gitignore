@@ -8,3 +8,24 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Thông tin xác thực Kaggle (KHÔNG commit) — đặt kaggle.json ở gốc dự án hoặc ~/.kaggle/
+kaggle.json
+
+# File tạm do CatBoost tự sinh
+catboost_info/
+
+# Kết quả chạy thử --quick (sinh lại được bằng cờ --quick)
+*_quick.*
+*_quick/
+
+# Dự báo từng dòng (~35 MB, sinh lại bằng Src/Experiments/run_improvement_multiseed.py)
+results/07_improvement/a_p1_p3/predictions_seed*.parquet
+
+# Hướng cải tiến mở rộng (Hierarchical & Combined) - Giữ local, không commit lên GitHub
+Src/Improvement/Hierarchical/
+Src/Improvement/Combined/
+results/07_improvement/b_hierarchical/
+results/07_improvement/c_combined_p3_hierarchical/
+Config/experiments/hierarchical_reconciliation.toml
+Config/experiments/combined_p3_hierarchical.toml
